@@ -7,12 +7,6 @@ This project demonstrates real-world concepts like **REST API development, datab
 
 ---
 
-## 🌐 Live Demo
-
-👉 (Add after deployment)
-
----
-
 # 🖼️ Application Preview
 
 ---
