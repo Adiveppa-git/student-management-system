@@ -1,82 +1,51 @@
-\# 🎓 Student Management System
+<h1 align="center">🎓 Student Management System</h1>
 
+<p align="center">
+  A simple full-stack web application to manage student records using FastAPI and MongoDB.
+</p>
 
+---
 
-A full-stack mini project using FastAPI and MongoDB.
+## 🚀 Features
 
+- ➕ Add Student
+- 📋 View Students
+- ✏️ Update Student
+- ❌ Delete Student
+- 👁 View Full Details
+- 📊 Serial Numbering
+- 🔽 View More / Show Less
+- 🎨 Clean UI with color buttons
 
+---
 
-\## 🚀 Features
+## 🛠 Tech Stack
 
-\- Add Student
+- **Frontend:** HTML, CSS, JavaScript  
+- **Backend:** FastAPI (Python)  
+- **Database:** MongoDB  
 
-\- View Students
+---
 
-\- Update Student
+## 📸 Screenshots
 
-\- Delete Student
+### 🏠 Home Page
+![Home](screenshots/home.png)
 
-\- View More option
+### ✏️ Edit Student
+![Edit](screenshots/edit.png)
 
-\- Clean UI with colors
+### 👁 View Student
+![View](screenshots/view.png)
 
+### 📋 View More
+![More](screenshots/more.png)
 
+---
 
-\## 🛠 Tech Stack
+## ⚙️ Installation & Setup
 
-\- Frontend: HTML, CSS, JavaScript
-
-\- Backend: FastAPI (Python)
-
-\- Database: MongoDB
-
-
-
-\## ▶️ How to Run
-
-
-
-1\. Start MongoDB
-
-2\. Run backend:
-
-&#x20;  uvicorn app.main:app --reload
-
-3\. Open:
-
-&#x20;  frontend/index.html
-
-
-
-\## 📌 Author
-
-Adiveppa
-
-
-
-\## 📸 Screenshots
-
-
-
-\### 🏠 Home Page
-
-!\[Home](screenshots/home.png)
-
-
-
-\### ✏️ Edit Student
-
-!\[Edit](screenshots/edit.png)
-
-
-
-\### 👁 View Student
-
-!\[View](screenshots/view.png)
-
-
-
-\### 📋 View More
-
-!\[More](screenshots/more.png)
-
+### 1️⃣ Clone the repository
+```bash
+git clone https://github.com/Adiveppa-git/student-management-system.git
+cd student-management-system
