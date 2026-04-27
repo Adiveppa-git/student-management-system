@@ -52,3 +52,31 @@ A full-stack mini project using FastAPI and MongoDB.
 
 Adiveppa
 
+
+
+\## 📸 Screenshots
+
+
+
+\### 🏠 Home Page
+
+!\[Home](screenshots/home.png)
+
+
+
+\### ✏️ Edit Student
+
+!\[Edit](screenshots/edit.png)
+
+
+
+\### 👁 View Student
+
+!\[View](screenshots/view.png)
+
+
+
+\### 📋 View More
+
+!\[More](screenshots/more.png)
+
