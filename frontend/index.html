@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Management</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 600px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px;
+        }
+
+        button {
+            padding: 6px 12px;
+            margin: 2px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #submitBtn {
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .addBtn { background: #007bff; color: white; }     /* Blue */
+        .updateBtn { background: #28a745; color: white; }  /* Green */
+        .editBtn { background: #ffc107; }                  /* Yellow */
+        .deleteBtn { background: #dc3545; color: white; }  /* Red */
+        .viewBtn { background: #17a2b8; color: white; }
+
+        ul {
+            padding: 0;
+        }
+
+        li {
+            list-style: none;
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .viewBtn {
+    background: #17a2b8;   /* Cyan */
+    color: white;
+}
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Add Student</h2>
+
+<form id="studentForm">
+    Name: <input type="text" id="name">
+    USN: <input type="text" id="usn">
+    Branch: <input type="text" id="branch">
+    Year: <input type="number" id="year">
+    Email: <input type="email" id="email">
+
+    <button id="submitBtn" class="addBtn" type="submit">Add Student</button>
+</form>
+
+<h2>Students List</h2>
+<ul id="studentList"></ul>
+
+</div>
+
+<script>
+let showAll = false;
+const API = "http://127.0.0.1:8000/students";
+
+let editUSN = null;
+
+// Add / Update
+document.getElementById("studentForm").onsubmit = async (e) => {
+    e.preventDefault();
+
+    const student = {
+        name: name.value,
+        usn: usn.value,
+        branch: branch.value,
+        year: parseInt(year.value),
+        email: email.value
+    };
+
+    if (editUSN) {
+        await fetch(API + "/" + editUSN, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(student)
+        });
+
+        alert("Updated ✅");
+        editUSN = null;
+
+        submitBtn.textContent = "Add Student";
+        submitBtn.className = "addBtn";
+
+    } else {
+        await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(student)
+        });
+
+        alert("Added ✅");
+    }
+
+    studentForm.reset();
+    loadStudents();
+};
+
+// Load
+async function loadStudents() {
+    const res = await fetch(API);
+    const data = await res.json();
+
+    studentList.innerHTML = "";
+
+    const visibleStudents = showAll ? data : data.slice(0, 3);
+
+    visibleStudents.forEach((s, index) => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+            <span>
+                <b>${index + 1}.</b> ${s.name} (${s.usn})
+            </span>
+
+            <div>
+                <button class="viewBtn"
+                    onclick='viewStudent(${JSON.stringify(s)})'>
+                    View
+                </button>
+
+                <button class="editBtn"
+                    onclick='editStudent(${JSON.stringify(s)})'>
+                    Edit
+                </button>
+
+                <button class="deleteBtn"
+                    onclick="deleteStudent('${s.usn}')">
+                    Delete
+                </button>
+            </div>
+        `;
+
+        studentList.appendChild(li);
+    });
+
+    // 👉 Add View More / Show Less button
+    if (data.length > 3) {
+        const btn = document.createElement("p");
+
+        btn.textContent = showAll ? "Show Less" : "View More";
+        btn.style.color = "#007bff";   // light blue text
+        btn.style.cursor = "pointer";
+        btn.style.textAlign = "center";
+        btn.style.marginTop = "10px";
+
+        btn.onclick = () => {
+            showAll = !showAll;
+            loadStudents();
+        };
+
+        studentList.appendChild(btn);
+    }
+}
+// Edit
+function editStudent(student) {
+    document.getElementById("name").value = student.name || "";
+    document.getElementById("usn").value = student.usn || "";
+    document.getElementById("branch").value = student.branch || "";
+    document.getElementById("year").value = student.year || "";
+    document.getElementById("email").value = student.email || "";
+
+    editUSN = student.usn;
+
+    submitBtn.textContent = "Update Student";
+    submitBtn.className = "updateBtn";
+}
+
+function viewStudent(student) {
+    alert(
+        "Name: " + student.name + "\n" +
+        "USN: " + student.usn + "\n" +
+        "Branch: " + student.branch + "\n" +
+        "Year: " + student.year + "\n" +
+        "Email: " + student.email
+    );
+}
+
+// Delete
+async function deleteStudent(usn) {
+    await fetch(API + "/" + usn, { method: "DELETE" });
+
+    alert("Deleted ❌");
+    loadStudents();
+}
+
+// Load initially
+loadStudents();
+</script>
+
+</body>
+</html>
