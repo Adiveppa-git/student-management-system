@@ -1,49 +1,88 @@
-<h1 align="center">🎓 Student Management System</h1>
+# 📝 Student Management System
 
-<p align="center">
-  A simple full-stack web application to manage student records using FastAPI and MongoDB.
-</p>
+🚀 **Student Management System** is a full-stack web application designed to manage student records efficiently.  
+It supports basic operations like **adding, viewing, updating, and deleting students** with a clean UI.
 
----
-
-## 🚀 Features
-
-- ➕ Add Student
-- 📋 View Students
-- ✏️ Update Student
-- ❌ Delete Student
-- 👁 View Full Details
-- 📊 Serial Numbering
-- 🔽 View More / Show Less
-- 🎨 Clean UI with color buttons
+This project demonstrates real-world concepts like **REST API development, database integration, and dynamic frontend interaction**.
 
 ---
 
-## 🛠 Tech Stack
+## 🌐 Live Demo
 
-- **Frontend:** HTML, CSS, JavaScript  
-- **Backend:** FastAPI (Python)  
-- **Database:** MongoDB  
+👉 (Add after deployment)
 
 ---
 
-## 📸 Screenshots
+# 🖼️ Application Preview
 
-### 🏠 Home Page
+---
+
+## 🏠 Add Student
 ![Home](screenshots/home.png)
 
-### ✏️ Edit Student
+---
+
+## ✏️ Edit Student
 ![Edit](screenshots/edit.png)
 
-### 👁 View Student
+---
+
+## 👁 View Student Details
 ![View](screenshots/view.png)
 
-### 📋 View More
+---
+
+## 📋 View More Students
 ![More](screenshots/more.png)
 
 ---
 
-## ⚙️ Installation & Setup
+# ✨ Core Features
+
+### 👨‍🎓 Student Features
+- ➕ Add student  
+- 📋 View student list  
+- ✏️ Edit student details  
+- ❌ Delete student  
+- 👁 View full student information  
+
+---
+
+### 🎨 UI Features
+- 📊 Serial number display  
+- 🔽 View More / Show Less option  
+- 🎯 Color-coded buttons  
+  - 🔵 Add  
+  - 🟢 Update  
+  - 🟡 Edit  
+  - 🔴 Delete  
+
+---
+
+# 🔗 API Features
+
+- RESTful API using FastAPI  
+- JSON-based communication  
+- Full CRUD functionality  
+
+---
+
+# 🧩 Technology Stack
+
+### 💻 Frontend
+- HTML  
+- CSS  
+- JavaScript  
+
+### ⚙️ Backend
+- FastAPI (Python)  
+
+### 🗄️ Database
+- MongoDB  
+
+---
+
+# ⚙️ Installation & Setup
 
 ### 1️⃣ Clone the repository
 ```bash
