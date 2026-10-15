@@ -1,5 +1,9 @@
+import os
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["student_db"]
-collection = db["students"]
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("DB_NAME", "student_db")
+
+client = MongoClient(MONGO_URI)
+db = client[DB_NAME]
+collection = db["students"]

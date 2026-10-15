@@ -2,7 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware   # 👈 ADD THIS
 from app.routes.student_routes import router
 
-app = FastAPI()
+app = FastAPI(
+    title="AI-Powered Student Success and Early Warning System API",
+    version="1.0.0",
+    description="Student Management and Academic Early Warning System REST API"
+)
 
 # 👇 ADD THIS BLOCK
 app.add_middleware(
