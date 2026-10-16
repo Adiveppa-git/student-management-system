@@ -231,9 +231,71 @@ The interface includes a tabbed navigation bar at the top:
 
 ---
 
+# 🏫 Engineering-College Academic Data Preparation & ML Readiness (Phase 6)
+
+Phase 6 introduces a separate, validated engineering-college academic data framework designed for future college-specific model development, strictly decoupled from the secondary-school benchmark.
+
+### 📐 College Academic Observation Schema (`CollegeAcademicObservation`)
+The schema ([`app/models/college_schemas.py`](file:///c:/Users/ADIVEPPA%20D%20MAMADAPUR/Downloads/student-management-system/app/models/college_schemas.py)) models semester-level academic observations in Indian engineering colleges (AICTE / VTU / autonomous institutions):
+
+| Field | Type | Required | Constraints / Assumptions | Description |
+| :--- | :---: | :---: | :--- | :--- |
+| `student_ref` | `str` | Yes | 3–64 chars, uppercase | Pseudonymous identifier (hashed USN or token). Zero raw PII. |
+| `program` | `str` | Yes (default `B.Tech`) | 2–50 chars | Academic degree program (B.E., B.Tech, M.Tech). |
+| `branch` | `str` | Yes | 2–50 chars | Department (e.g. CSE, ISE, ECE, MECH, AIML). |
+| `academic_year` | `int` | Yes | 1 to 5 | Academic study year (1–4 for 4-year B.E./B.Tech). |
+| `semester` | `int` | Yes | 1 to 10 | Semester number. Must be consistent with `academic_year` (e.g. Year 1 $\rightarrow$ Sem 1 or 2). |
+| `attendance_pct` | `float` | Yes | 0.0 to 100.0% | Semester cumulative attendance. 75% is the statutory condonation limit. |
+| `cie_marks_obtained` | `float` | Yes | $\ge 0.0, \le \text{cie\_max\_marks}$ | Continuous Internal Evaluation (CIE) / midterm marks earned. |
+| `cie_max_marks` | `float` | Yes (default `50.0`) | $> 0.0$ | **Explicit maximum marks** for CIE (avoids silent grading assumptions). |
+| `assignment_score_avg`| `float` | No | 0.0 to 100.0% | Continuous assignment / lab coursework score percentage. |
+| `previous_sgpa` | `float` | No | 0.0 to 10.0 scale | Preceding semester SGPA. Must be `None` or `0.0` for Semester 1 students. |
+| `cumulative_cgpa` | `float` | No | 0.0 to 10.0 scale | Cumulative CGPA prior to current semester. Must be `None` for Semester 1. |
+| `gpa_scale_max` | `float` | Yes (default `10.0`) | $> 0.0$ | Explicit grading scale ceiling (10.0 UGC/AICTE standard). |
+| `active_backlogs` | `int` | Yes (default `0`) | 0 to 30 | Uncleared backlogs / course arrears. Must be `0` for Semester 1. |
+| `credits_registered` | `float` | No (default `20.0`) | 1.0 to 40.0 | Academic credits enrolled in the current semester. |
+| `credits_earned_prior`| `float` | No | 0.0 to 250.0 | Cumulative earned credits prior to current semester. |
+| `study_hours_per_week`| `float` | No | 0.0 to 80.0 | Self-study hours per week outside classroom instruction. |
+| `verified_outcome` | `str` | No | Enum: `PASS`, `FAIL_OR_DETAINED`, `ACADEMIC_PROBATION`, `WITHDRAWN` | Ground-truth outcome label. Optional; only for post-hoc verified records. |
+| `is_at_risk_label` | `bool` | No | `True` / `False` | Binary risk ground-truth label. |
+| `outcome_source` | `str` | Conditional | Required if `verified_outcome` set | Institutional audit source (e.g. `OFFICIAL_EXAM_CELL`). |
+
+### 🔍 Data Quality & Readiness Audit (`app/ml/college_data_prep.py`)
+The reusable data preparation utility ([`app/ml/college_data_prep.py`](file:///c:/Users/ADIVEPPA%20D%20MAMADAPUR/Downloads/student-management-system/app/ml/college_data_prep.py)) runs 6 automated checks:
+1. **Numeric Range & Bounds Validation**: Validates attendance (0–100%), CIE marks within max ceiling, and GPA within scale.
+2. **Domain Consistency Validation**: Enforces that semesters match academic years, and prevents first-semester records from having prior GPAs or backlogs.
+3. **Duplicate Observation Detection**: Evaluates the composite key `(student_ref, academic_year, semester)` to identify and locate conflicting duplicate semester records.
+4. **Target Leakage Prevention**: Automatically scans input feature names against known post-examination leakage patterns (`see_marks`, `external_marks`, `end_sem_marks`, `current_sem_sgpa`, `promotion_status`). Flagged fields are marked as HIGH risk and blocked.
+5. **Class Balance Reporting**: Calculates true positive vs false negative distribution on verified labeled records.
+6. **ML Readiness Checklist**: Evaluates if the dataset satisfies strict criteria before college model training is permitted.
+
+### 🚦 Criteria for Future College Model Training
+A college-specific machine learning model will **NOT** be trained until the following criteria checklist is satisfied:
+* [x] **Sample Size**: $\ge 100$ valid semester observations from authorized institutional sources.
+* [x] **Ground-Truth Labels**: $\ge 80$ verified labeled records backed by official exam cell records.
+* [x] **Class Distribution**: $\ge 15$ verified at-risk samples in the minority class to prevent degenerate learning.
+* [x] **Zero Target Leakage**: Zero end-semester or post-hoc examination features in the input feature matrix.
+* [x] **Deduplication**: Zero unresolved duplicate observations for the same student-semester.
+* [x] **Data Quality Error Rate**: $< 5\%$ validation error rate.
+
+*Status: **TRAINING_BLOCKED** until an authorized, labeled institutional dataset is provided. College predictions remain disabled to prevent fabricated predictions.*
+
+### ⚖️ Comparison: UCI Benchmark vs. Future College Model
+| Attribute | Current UCI Benchmark (Phase 3–5) | Future College-Specific Model (Phase 6+) |
+| :--- | :--- | :--- |
+| **Domain** | Secondary School (Portugal) | Engineering Degree Program (India / VTU) |
+| **Subject Scope** | Single Subject (Mathematics) | Semester Program Across Multi-Credit Courses |
+| **Key Features** | G1 (0–20), absences, study time, alcohol consumption, family background | CIE marks (out of explicit max), attendance %, CGPA (10.0 scale), active backlogs |
+| **Operational Role** | Educational benchmarking & architectural demonstration | Institutional early warning & academic advisory interventions |
+| **Readiness Status** | Operational (`POST /api/ai/benchmark-predict`) | Schema & validation ready; training blocked pending labeled real data |
+
+---
+
 # ⚠️ Remaining Limitations
 
 1. **Secondary-School Dataset Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
-2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `internal_marks_avg`, `previous_gpa`, `backlog_count`) remain separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
-3. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
+2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
+3. **No Training on Synthetic Data**: Phase 6 provides data preparation and readiness checks only. College-specific training and predictions remain blocked until an authorized, labeled institutional dataset is available.
+4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
+
 
