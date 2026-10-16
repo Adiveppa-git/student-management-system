@@ -1,0 +1,149 @@
+{
+  "dataset_inspection": {
+    "total_records": 395,
+    "total_columns": 33,
+    "total_missing_values": 0,
+    "duplicate_rows": 0,
+    "class_balance": {
+      "at_risk_count": 130,
+      "passing_count": 265,
+      "at_risk_ratio": 0.3291,
+      "passing_ratio": 0.6709
+    },
+    "target_stats": {
+      "min_g3": 0.0,
+      "max_g3": 20.0,
+      "mean_g3": 10.415189873417722,
+      "median_g3": 11.0,
+      "std_g3": 4.5814426109978434
+    }
+  },
+  "experiment_config": {
+    "include_g1": true,
+    "target_leakage_prevention": "G3 and G2 strictly excluded from feature inputs",
+    "test_size": 0.2,
+    "random_seed": 42,
+    "train_samples": 316,
+    "test_samples": 79,
+    "feature_counts": {
+      "total_features": 31,
+      "numeric_features": 14,
+      "categorical_features": 17
+    }
+  },
+  "models": {
+    "logistic_regression": {
+      "algorithm": "LogisticRegression(class_weight='balanced', max_iter=1000, C=1.0)",
+      "metrics": {
+        "accuracy": 0.7975,
+        "precision": 0.6562,
+        "recall": 0.8077,
+        "f1_score": 0.7241,
+        "roc_auc": 0.9325,
+        "confusion_matrix": {
+          "matrix": [
+            [
+              42,
+              11
+            ],
+            [
+              5,
+              21
+            ]
+          ],
+          "true_negatives": 42,
+          "false_positives": 11,
+          "false_negatives": 5,
+          "true_positives": 21,
+          "description": "TN=42 (Passing classified as Passing), FP=11 (Passing falsely flagged as At-Risk), FN=5 (At-Risk students missed!), TP=21 (At-Risk students successfully flagged)"
+        },
+        "classification_report": {
+          "0": {
+            "precision": 0.8936170212765957,
+            "recall": 0.7924528301886793,
+            "f1-score": 0.84,
+            "support": 53.0
+          },
+          "1": {
+            "precision": 0.65625,
+            "recall": 0.8076923076923077,
+            "f1-score": 0.7241379310344828,
+            "support": 26.0
+          },
+          "accuracy": 0.7974683544303798,
+          "macro avg": {
+            "precision": 0.7749335106382979,
+            "recall": 0.8000725689404935,
+            "f1-score": 0.7820689655172414,
+            "support": 79.0
+          },
+          "weighted avg": {
+            "precision": 0.8154962294640452,
+            "recall": 0.7974683544303798,
+            "f1-score": 0.8018681798341336,
+            "support": 79.0
+          }
+        }
+      }
+    },
+    "random_forest": {
+      "algorithm": "RandomForestClassifier(class_weight='balanced', n_estimators=100, min_samples_leaf=2)",
+      "metrics": {
+        "accuracy": 0.8861,
+        "precision": 0.8148,
+        "recall": 0.8462,
+        "f1_score": 0.8302,
+        "roc_auc": 0.9354,
+        "confusion_matrix": {
+          "matrix": [
+            [
+              48,
+              5
+            ],
+            [
+              4,
+              22
+            ]
+          ],
+          "true_negatives": 48,
+          "false_positives": 5,
+          "false_negatives": 4,
+          "true_positives": 22,
+          "description": "TN=48 (Passing classified as Passing), FP=5 (Passing falsely flagged as At-Risk), FN=4 (At-Risk students missed!), TP=22 (At-Risk students successfully flagged)"
+        },
+        "classification_report": {
+          "0": {
+            "precision": 0.9230769230769231,
+            "recall": 0.9056603773584906,
+            "f1-score": 0.9142857142857143,
+            "support": 53.0
+          },
+          "1": {
+            "precision": 0.8148148148148148,
+            "recall": 0.8461538461538461,
+            "f1-score": 0.8301886792452831,
+            "support": 26.0
+          },
+          "accuracy": 0.8860759493670886,
+          "macro avg": {
+            "precision": 0.8689458689458689,
+            "recall": 0.8759071117561683,
+            "f1-score": 0.8722371967654987,
+            "support": 79.0
+          },
+          "weighted avg": {
+            "precision": 0.8874463558007862,
+            "recall": 0.8860759493670886,
+            "f1-score": 0.8866082090825343,
+            "support": 79.0
+          }
+        }
+      }
+    }
+  },
+  "model_selection": {
+    "recommended_model": "Random Forest",
+    "rationale": "Random Forest achieved higher Recall (0.8462 vs 0.8077) and F1-score (0.8302 vs 0.7241).",
+    "primary_decision_metric": "Recall (at-risk class 1) & F1-score"
+  }
+}
