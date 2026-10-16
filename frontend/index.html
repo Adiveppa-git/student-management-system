@@ -1,196 +1,1333 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Student Management</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management & AI Early Warning System</title>
 
     <style>
-        body {
-            font-family: Arial;
-            background: #f5f7fa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        :root {
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --success: #28a745;
+            --success-hover: #218838;
+            --warning: #ffc107;
+            --warning-hover: #e0a800;
+            --danger: #dc3545;
+            --danger-hover: #c82333;
+            --info: #17a2b8;
+            --info-hover: #138496;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+            --border: #dee2e6;
+            --radius: 10px;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        /* Header & Navigation */
+        .app-header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 14px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: #e9ecef;
+            color: var(--text-main);
+            border: 1px solid transparent;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            background: #dde2e6;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* Main Container */
+        .main-wrapper {
+            flex: 1;
+            max-width: 1100px;
+            width: 100%;
+            margin: 25px auto;
+            padding: 0 20px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Existing Student CRUD Layout preservation */
         .container {
-            width: 600px;
-            background: white;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--card-bg);
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow);
         }
 
         h2 {
             text-align: center;
+            margin-bottom: 16px;
+            color: #1a202c;
         }
 
-        input {
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        input, select {
             width: 100%;
-            padding: 8px;
-            margin: 5px 0 10px;
+            padding: 9px 12px;
+            margin: 4px 0 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+            border-color: var(--primary);
         }
 
         button {
-            padding: 6px 12px;
+            padding: 8px 14px;
             margin: 2px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.15s, background-color 0.15s;
+        }
+
+        button:hover {
+            opacity: 0.92;
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         #submitBtn {
             width: 100%;
             font-size: 16px;
+            padding: 10px;
+            margin-top: 10px;
+            font-weight: 600;
         }
 
-        .addBtn { background: #007bff; color: white; }     /* Blue */
-        .updateBtn { background: #28a745; color: white; }  /* Green */
-        .editBtn { background: #ffc107; }                  /* Yellow */
-        .deleteBtn { background: #dc3545; color: white; }  /* Red */
-        .viewBtn { background: #17a2b8; color: white; }
+        .addBtn { background: var(--primary); color: white; }     /* Blue */
+        .updateBtn { background: var(--success); color: white; }  /* Green */
+        .editBtn { background: var(--warning); color: #212529; }  /* Yellow */
+        .deleteBtn { background: var(--danger); color: white; }   /* Red */
+        .viewBtn { background: var(--info); color: white; }       /* Cyan */
 
         ul {
             padding: 0;
+            margin-top: 10px;
         }
 
         li {
             list-style: none;
             margin: 8px 0;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border: 1px solid var(--border);
+            border-radius: 6px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        .viewBtn {
-    background: #17a2b8;   /* Cyan */
-    color: white;
-}
+        /* Limitation Warning Banner */
+        .disclaimer-banner {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-left: 5px solid var(--warning);
+            color: #856404;
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 13.5px;
+            line-height: 1.5;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .disclaimer-banner strong {
+            color: #664d03;
+        }
+
+        .banner-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Card System for AI Dashboard & Predictor */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1a202c;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 10px;
+        }
+
+        /* Grid Layouts */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .metric-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: transform 0.15s ease;
+        }
+
+        .metric-box:hover {
+            transform: translateY(-2px);
+            border-color: #cbd5e1;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 4px 0;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-subtitle {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* Health Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-badge.healthy {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-badge.unavailable {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Confusion Matrix Table */
+        .matrix-table {
+            width: 100%;
+            max-width: 500px;
+            margin: 15px auto;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .matrix-table th, .matrix-table td {
+            border: 1px solid var(--border);
+            padding: 10px;
+        }
+
+        .matrix-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .cell-tn { background: #e8f5e9; font-weight: bold; color: #2e7d32; }
+        .cell-tp { background: #e8f5e9; font-weight: bold; color: #2e7d32; }
+        .cell-fp { background: #fff3e0; color: #e65100; }
+        .cell-fn { background: #ffebee; font-weight: bold; color: #c62828; }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            margin-top: 10px;
+        }
+
+        .comparison-table th, .comparison-table td {
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #fbfcfd;
+        }
+
+        /* Form Sections for 31-Feature Benchmark Form */
+        .form-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .form-group .help-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: -6px;
+            margin-bottom: 6px;
+        }
+
+        .form-section-header {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 20px 0 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .preset-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .preset-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-right: 4px;
+        }
+
+        .btn-preset {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-preset:hover {
+            background: #e2e8f0;
+        }
+
+        /* Prediction Result Box */
+        .result-box {
+            border-radius: 10px;
+            padding: 24px;
+            margin-top: 24px;
+            display: none;
+            border: 2px solid;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .result-box.at-risk {
+            background: #fff5f5;
+            border-color: #feb2b2;
+            color: #742a2a;
+        }
+
+        .result-box.normal {
+            background: #f0fff4;
+            border-color: #9ae6b4;
+            color: #22543d;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .risk-pill {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .risk-pill.at-risk {
+            background: var(--danger);
+            color: white;
+        }
+
+        .risk-pill.normal {
+            background: var(--success);
+            color: white;
+        }
+
+        .progress-track {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-bar.high-risk { background: var(--danger); }
+        .progress-bar.medium-risk { background: var(--warning); }
+        .progress-bar.low-risk { background: var(--success); }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s ease-in-out infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error-banner {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 14px 0;
+            font-size: 13.5px;
+            display: none;
+        }
+
+        /* Footer */
+        .app-footer {
+            margin-top: auto;
+            background: #fff;
+            border-top: 1px solid var(--border);
+            padding: 16px 20px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .header-inner {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .nav-tabs {
+                width: 100%;
+            }
+            .tab-btn {
+                flex: 1;
+                justify-content: center;
+                padding: 10px 8px;
+                font-size: 12.5px;
+            }
+            .form-grid-4 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- Header Navigation -->
+<header class="app-header">
+    <div class="header-inner">
+        <div>
+            <h1 class="brand-title">🎓 Student Success & Early Warning System</h1>
+            <p class="brand-subtitle">Full-Stack Student Management with Scikit-learn Academic Risk Benchmark</p>
+        </div>
+        <nav class="nav-tabs" role="tablist" aria-label="Application Tabs">
+            <button id="tab-students" class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab('students')">
+                👨‍🎓 Student Management
+            </button>
+            <button id="tab-dashboard" class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('dashboard')">
+                📊 AI Dashboard
+            </button>
+            <button id="tab-benchmark" class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('benchmark')">
+                🧪 Benchmark Predictor
+            </button>
+        </nav>
+    </div>
+</header>
 
-<h2>Add Student</h2>
+<main class="main-wrapper">
 
-<form id="studentForm">
-    Name: <input type="text" id="name">
-    USN: <input type="text" id="usn">
-    Branch: <input type="text" id="branch">
-    Year: <input type="number" id="year">
-    Email: <input type="email" id="email">
+    <!-- ================================================================= -->
+    <!-- TAB 1: Student Management (Existing CRUD Application Preserved)  -->
+    <!-- ================================================================= -->
+    <div id="view-students" class="tab-content active" role="tabpanel" aria-labelledby="tab-students">
+        <div class="container">
+            <h2>Add Student</h2>
 
-    <button id="submitBtn" class="addBtn" type="submit">Add Student</button>
-</form>
+            <form id="studentForm">
+                <label class="form-label" for="name">Name:</label>
+                <input type="text" id="name" required placeholder="Full Name">
 
-<h2>Students List</h2>
-<ul id="studentList"></ul>
+                <label class="form-label" for="usn">USN:</label>
+                <input type="text" id="usn" required placeholder="University Seat Number (e.g. 1DB24IS045)">
 
-</div>
+                <label class="form-label" for="branch">Branch:</label>
+                <input type="text" id="branch" required placeholder="Department / Branch (e.g. ISE, CSE, ECE)">
+
+                <label class="form-label" for="year">Year:</label>
+                <input type="number" id="year" min="1" max="8" required placeholder="Academic Year (1-8)">
+
+                <label class="form-label" for="email">Email:</label>
+                <input type="email" id="email" required placeholder="student@example.com">
+
+                <button id="submitBtn" class="addBtn" type="submit">Add Student</button>
+            </form>
+
+            <h2>Students List</h2>
+            <ul id="studentList"></ul>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: AI Dashboard & Model Metrics                               -->
+    <!-- ================================================================= -->
+    <div id="view-dashboard" class="tab-content" role="tabpanel" aria-labelledby="tab-dashboard">
+
+        <!-- Prominent Limitation Notice -->
+        <div class="disclaimer-banner">
+            <span class="banner-icon">⚠️</span>
+            <div>
+                <strong>Experimental Benchmark Notice:</strong> This machine learning model was trained on a secondary-school mathematics dataset from Portugal (Cortez & Silva, 2008). It has <strong>not</strong> been validated for Indian engineering-college students. Its predictions must not be interpreted as reliable academic-risk assessments for existing college records.
+            </div>
+        </div>
+
+        <!-- Model Status Card -->
+        <div class="card">
+            <div class="card-title">
+                <span>🤖</span> Model Operational Status & Metadata
+                <button onclick="loadAIDashboard()" style="margin-left: auto; padding: 4px 10px; font-size: 12px; background: #e2e8f0; color: #1e293b;">
+                    🔄 Refresh Status
+                </button>
+            </div>
+
+            <div id="dashboardLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                <div class="spinner" style="border-top-color: var(--primary); width: 24px; height: 24px;"></div>
+                <p style="margin-top: 8px;">Fetching model health and metrics from backend...</p>
+            </div>
+
+            <div id="dashboardError" class="error-banner"></div>
+
+            <div id="dashboardContent" style="display: none;">
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #edf2f7;">
+                    <div>
+                        <span id="healthBadge" class="status-badge healthy">
+                            <span class="status-dot"></span> <span id="healthText">Operational</span>
+                        </span>
+                        <span style="margin-left: 10px; font-size: 13px; color: var(--text-muted);" id="healthModelType">RandomForestClassifier</span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-muted);">
+                        Pipeline: <strong>Scikit-learn</strong> | Evaluated Features: <strong id="featuresCount">31</strong>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Holdout Accuracy</div>
+                        <div class="metric-value" id="metricAccuracy">--</div>
+                        <div class="metric-subtitle">Overall test set accuracy</div>
+                    </div>
+                    <div class="metric-box" style="border-color: #bbf7d0;">
+                        <div class="metric-label" style="color: var(--success);">Recall (At-Risk)</div>
+                        <div class="metric-value" style="color: var(--success);" id="metricRecall">--</div>
+                        <div class="metric-subtitle">Primary early-warning metric</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Precision (At-Risk)</div>
+                        <div class="metric-value" id="metricPrecision">--</div>
+                        <div class="metric-subtitle">True positive rate</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">F1-Score (At-Risk)</div>
+                        <div class="metric-value" id="metricF1">--</div>
+                        <div class="metric-subtitle">Harmonic mean of Prec/Rec</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">ROC-AUC</div>
+                        <div class="metric-value" id="metricRocAuc">--</div>
+                        <div class="metric-subtitle">Separability index</div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix & Model Comparison -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div>
+                        <h3 style="font-size: 15px; margin-bottom: 10px; color: #334155;">📊 Test Confusion Matrix (Holdout N = 79)</h3>
+                        <table class="matrix-table" aria-label="Test Confusion Matrix">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Pred: Passing</th>
+                                    <th>Pred: At-Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th>Actual: Passing</th>
+                                    <td class="cell-tn" id="cmTN">48<br><small>(True Neg)</small></td>
+                                    <td class="cell-fp" id="cmFP">5<br><small>(False Pos)</small></td>
+                                </tr>
+                                <tr>
+                                    <th>Actual: At-Risk</th>
+                                    <td class="cell-fn" id="cmFN">4<br><small>(False Neg)</small></td>
+                                    <td class="cell-tp" id="cmTP">22<br><small>(True Pos)</small></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 6px;">
+                            Only 4 false negatives: 22 out of 26 at-risk students (84.6%) successfully identified for intervention.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 style="font-size: 15px; margin-bottom: 10px; color: #334155;">⚖️ Algorithm Comparison</h3>
+                        <table class="comparison-table" aria-label="Model Comparison Table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Random Forest (Selected)</th>
+                                    <th>Logistic Regression</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTableBody">
+                                <tr><td>Accuracy</td><td id="cmpRFAcc">88.61%</td><td id="cmpLRAcc">79.75%</td></tr>
+                                <tr><td>Recall (At-Risk)</td><td id="cmpRFRec" style="font-weight: bold; color: var(--success);">84.62%</td><td id="cmpLRRec">80.77%</td></tr>
+                                <tr><td>Precision (At-Risk)</td><td id="cmpRFPrec">81.48%</td><td id="cmpLRPrec">65.62%</td></tr>
+                                <tr><td>F1-Score</td><td id="cmpRFF1">83.02%</td><td id="cmpLRF1">72.41%</td></tr>
+                                <tr><td>ROC-AUC</td><td id="cmpRFAuc">93.54%</td><td id="cmpLRAuc">93.25%</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Dataset Origin & Limitations -->
+                <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #edf2f7; font-size: 13px;">
+                    <p style="margin-bottom: 6px;"><strong>Dataset Origin:</strong> <a id="datasetLink" href="https://archive.ics.uci.edu/dataset/320/student+performance" target="_blank" rel="noopener" style="color: var(--primary);">UCI Machine Learning Repository — Student Performance</a> (License: CC BY 4.0)</p>
+                    <p style="margin-bottom: 6px;"><strong>Target Definition:</strong> Final grade G3 &lt; 10 on 0–20 scale (failing grade in Portuguese secondary schools).</p>
+                    <p style="margin-bottom: 6px;"><strong>Target Leakage Policy:</strong> G3 (final grade) and G2 (late term-2 grade) are strictly excluded from all inputs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- TAB 3: UCI Benchmark Predictor                                    -->
+    <!-- ================================================================= -->
+    <div id="view-benchmark" class="tab-content" role="tabpanel" aria-labelledby="tab-benchmark">
+
+        <!-- Prominent Limitation Notice -->
+        <div class="disclaimer-banner">
+            <span class="banner-icon">⚠️</span>
+            <div>
+                <strong>Experimental benchmark only:</strong> this model was trained on Portuguese secondary-school data. It has not been validated for Indian engineering-college students. Its predictions must not be interpreted as reliable academic-risk assessments for existing college records.
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>🧪</span> UCI Academic-Risk Benchmark Predictor (31 Features)
+            </div>
+
+            <!-- Quick-Fill Presets for Instant Testing -->
+            <div class="preset-bar">
+                <span class="preset-title">Quick-Fill Profiles:</span>
+                <button type="button" class="btn-preset" onclick="fillPreset('struggling')" style="border-color: #fca5a5; color: #991b1b; background: #fef2f2;">
+                    🔴 Struggling Student Profile
+                </button>
+                <button type="button" class="btn-preset" onclick="fillPreset('thriving')" style="border-color: #86efac; color: #166534; background: #f0fdf4;">
+                    🟢 Thriving Student Profile
+                </button>
+                <button type="button" class="btn-preset" onclick="fillPreset('average')" style="border-color: #fde047; color: #854d0e; background: #fefce8;">
+                    🟡 Average Passing Profile
+                </button>
+                <button type="button" class="btn-preset" onclick="clearBenchmarkForm()" style="margin-left: auto;">
+                    🔄 Reset Form
+                </button>
+            </div>
+
+            <form id="benchmarkForm" onsubmit="submitBenchmarkPrediction(event)">
+
+                <!-- SECTION 1: Academic & Prior Performance -->
+                <div class="form-section-header">
+                    <span>📚</span> 1. Academic & Prior Evaluation (Key Predictive Features)
+                </div>
+                <div class="form-grid-4">
+                    <div class="form-group">
+                        <label for="bm_G1">Term-1 Exam Grade (G1) *</label>
+                        <input type="number" id="bm_G1" step="0.1" min="0" max="20" required placeholder="0.0 - 20.0">
+                        <span class="help-hint">Scale: 0 to 20 (&lt; 10 is failing)</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_studytime">Weekly Study Time *</label>
+                        <select id="bm_studytime" required>
+                            <option value="">Select hours...</option>
+                            <option value="1">1: &lt; 2 hours</option>
+                            <option value="2">2: 2 to 5 hours</option>
+                            <option value="3">3: 5 to 10 hours</option>
+                            <option value="4">4: &gt; 10 hours</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_failures">Past Class Failures *</label>
+                        <input type="number" id="bm_failures" min="0" max="4" required placeholder="0 to 4">
+                        <span class="help-hint">0 if none, up to 4</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_absences">School Absences *</label>
+                        <input type="number" id="bm_absences" min="0" max="93" required placeholder="0 to 93">
+                        <span class="help-hint">Total missed classes</span>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: School Environment & Educational Support -->
+                <div class="form-section-header">
+                    <span>🏫</span> 2. School Environment & Educational Support
+                </div>
+                <div class="form-grid-4">
+                    <div class="form-group">
+                        <label for="bm_school">School *</label>
+                        <select id="bm_school" required>
+                            <option value="GP">GP - Gabriel Pereira</option>
+                            <option value="MS">MS - Mousinho da Silveira</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_schoolsup">School Educational Support *</label>
+                        <select id="bm_schoolsup" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_famsup">Family Educational Support *</label>
+                        <select id="bm_famsup" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_paid">Extra Paid Classes *</label>
+                        <select id="bm_paid" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_activities">Extracurricular Activities *</label>
+                        <select id="bm_activities" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_nursery">Attended Nursery School *</label>
+                        <select id="bm_nursery" required>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_higher">Wants Higher Education *</label>
+                        <select id="bm_higher" required>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_reason">Reason to Choose School *</label>
+                        <select id="bm_reason" required>
+                            <option value="course">Course Preference</option>
+                            <option value="home">Close to Home</option>
+                            <option value="reputation">School Reputation</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: Student Demographics & Family Background -->
+                <div class="form-section-header">
+                    <span>👨‍👩‍👧</span> 3. Student Demographics & Family Background
+                </div>
+                <div class="form-grid-4">
+                    <div class="form-group">
+                        <label for="bm_sex">Sex *</label>
+                        <select id="bm_sex" required>
+                            <option value="F">Female (F)</option>
+                            <option value="M">Male (M)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_age">Age *</label>
+                        <input type="number" id="bm_age" min="12" max="30" required placeholder="12 - 30">
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_address">Home Address Type *</label>
+                        <select id="bm_address" required>
+                            <option value="U">Urban (U)</option>
+                            <option value="R">Rural (R)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_famsize">Family Size *</label>
+                        <select id="bm_famsize" required>
+                            <option value="GT3">Greater than 3 (GT3)</option>
+                            <option value="LE3">Less or equal to 3 (LE3)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Pstatus">Parent Cohabitation *</label>
+                        <select id="bm_Pstatus" required>
+                            <option value="T">Living Together (T)</option>
+                            <option value="A">Living Apart (A)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Medu">Mother's Education *</label>
+                        <select id="bm_Medu" required>
+                            <option value="0">0: None</option>
+                            <option value="1">1: Primary (4th grade)</option>
+                            <option value="2">2: 5th to 9th grade</option>
+                            <option value="3">3: Secondary</option>
+                            <option value="4">4: Higher Education</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Fedu">Father's Education *</label>
+                        <select id="bm_Fedu" required>
+                            <option value="0">0: None</option>
+                            <option value="1">1: Primary (4th grade)</option>
+                            <option value="2">2: 5th to 9th grade</option>
+                            <option value="3">3: Secondary</option>
+                            <option value="4">4: Higher Education</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Mjob">Mother's Job *</label>
+                        <select id="bm_Mjob" required>
+                            <option value="other">Other</option>
+                            <option value="services">Civil Services</option>
+                            <option value="at_home">At Home</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="health">Healthcare</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Fjob">Father's Job *</label>
+                        <select id="bm_Fjob" required>
+                            <option value="other">Other</option>
+                            <option value="services">Civil Services</option>
+                            <option value="at_home">At Home</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="health">Healthcare</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_guardian">Legal Guardian *</label>
+                        <select id="bm_guardian" required>
+                            <option value="mother">Mother</option>
+                            <option value="father">Father</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: Personal Life, Health & Habits -->
+                <div class="form-section-header">
+                    <span>🏃</span> 4. Personal Life, Health & Lifestyle Habits
+                </div>
+                <div class="form-grid-4">
+                    <div class="form-group">
+                        <label for="bm_traveltime">Travel Time to School *</label>
+                        <select id="bm_traveltime" required>
+                            <option value="1">1: &lt; 15 min</option>
+                            <option value="2">2: 15 to 30 min</option>
+                            <option value="3">3: 30 to 60 min</option>
+                            <option value="4">4: &gt; 60 min</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_internet">Internet Access at Home *</label>
+                        <select id="bm_internet" required>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_romantic">Romantic Relationship *</label>
+                        <select id="bm_romantic" required>
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_famrel">Family Relationship Quality *</label>
+                        <select id="bm_famrel" required>
+                            <option value="1">1: Very Bad</option>
+                            <option value="2">2: Bad</option>
+                            <option value="3">3: Normal</option>
+                            <option value="4">4: Good</option>
+                            <option value="5" selected>5: Excellent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_freetime">Free Time After School *</label>
+                        <select id="bm_freetime" required>
+                            <option value="1">1: Very Low</option>
+                            <option value="2">2: Low</option>
+                            <option value="3" selected>3: Medium</option>
+                            <option value="4">4: High</option>
+                            <option value="5">5: Very High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_goout">Going Out with Friends *</label>
+                        <select id="bm_goout" required>
+                            <option value="1">1: Very Low</option>
+                            <option value="2">2: Low</option>
+                            <option value="3" selected>3: Medium</option>
+                            <option value="4">4: High</option>
+                            <option value="5">5: Very High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Dalc">Workday Alcohol Consumption *</label>
+                        <select id="bm_Dalc" required>
+                            <option value="1" selected>1: Very Low</option>
+                            <option value="2">2: Low</option>
+                            <option value="3">3: Medium</option>
+                            <option value="4">4: High</option>
+                            <option value="5">5: Very High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_Walc">Weekend Alcohol Consumption *</label>
+                        <select id="bm_Walc" required>
+                            <option value="1" selected>1: Very Low</option>
+                            <option value="2">2: Low</option>
+                            <option value="3">3: Medium</option>
+                            <option value="4">4: High</option>
+                            <option value="5">5: Very High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_health">Current Health Status *</label>
+                        <select id="bm_health" required>
+                            <option value="1">1: Very Bad</option>
+                            <option value="2">2: Bad</option>
+                            <option value="3">3: Normal</option>
+                            <option value="4">4: Good</option>
+                            <option value="5" selected>5: Very Good</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="predictError" class="error-banner"></div>
+
+                <button id="predictSubmitBtn" class="addBtn" type="submit" style="width: 100%; font-size: 16px; padding: 12px; margin-top: 18px; font-weight: 600;">
+                    ⚡ Predict Academic Risk (UCI Model)
+                </button>
+            </form>
+
+            <!-- Prediction Result Panel -->
+            <div id="benchmarkResult" class="result-box">
+                <div class="result-header">
+                    <div>
+                        <span style="font-size: 13px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Evaluation Outcome</span>
+                        <div id="resultRiskPill" class="risk-pill at-risk" style="margin-top: 4px;">
+                            <span id="resultIcon">⚠️</span> <span id="resultStatusText">At-Risk</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 12px; color: var(--text-muted);">Model: <strong id="resultModelName">Random Forest</strong></span><br>
+                        <span style="font-size: 12px; color: var(--text-muted);">Risk Tier: <strong id="resultRiskLevel">High</strong></span>
+                    </div>
+                </div>
+
+                <div style="margin: 14px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600;">
+                        <span>Academic Risk Probability:</span>
+                        <span id="resultRiskProb">88.7%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div id="resultProgressBar" class="progress-bar high-risk" style="width: 88.7%;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+                        <span>0% (Passing)</span>
+                        <span>Confidence: <strong id="resultConfidence">88.7%</strong></span>
+                        <span>100% (High Risk)</span>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 6px; padding: 12px; margin-top: 14px; font-size: 12px;">
+                    <p style="margin-bottom: 6px;"><strong>Disclaimer:</strong> <span id="resultDisclaimer">--</span></p>
+                    <p><strong>Domain Note:</strong> <span id="resultDomainNote">--</span></p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<footer class="app-footer">
+    <p>AI-Powered Student Success & Early Warning System | Built with FastAPI, Scikit-learn & MongoDB</p>
+</footer>
 
 <script>
-let showAll = false;
-const API = "http://127.0.0.1:8000/students";
+// =========================================================================
+// API Configuration (Environment-aware with local fallback)
+// =========================================================================
+const API_BASE = window.API_BASE_URL || (window.location.protocol.startsWith("http") ? window.location.origin : "http://127.0.0.1:8000");
+const API = `${API_BASE}/students`;
+const AI_HEALTH_API = `${API_BASE}/api/ai/health`;
+const AI_METRICS_API = `${API_BASE}/api/ai/model-metrics`;
+const AI_PREDICT_API = `${API_BASE}/api/ai/benchmark-predict`;
 
+// Navigation Tab Management
+function switchTab(tabName) {
+    const tabs = ["students", "dashboard", "benchmark"];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const view = document.getElementById(`view-${t}`);
+        if (t === tabName) {
+            btn.classList.add("active");
+            btn.setAttribute("aria-selected", "true");
+            view.classList.add("active");
+        } else {
+            btn.classList.remove("active");
+            btn.setAttribute("aria-selected", "false");
+            view.classList.remove("active");
+        }
+    });
+
+    if (tabName === "dashboard") {
+        loadAIDashboard();
+    }
+
+    if (history.replaceState) {
+        history.replaceState(null, null, `#${tabName}`);
+    }
+}
+
+// Initial Tab Routing from URL Hash
+window.addEventListener("DOMContentLoaded", () => {
+    const hash = window.location.hash.replace("#", "");
+    if (["students", "dashboard", "benchmark"].includes(hash)) {
+        switchTab(hash);
+    }
+});
+
+
+// =========================================================================
+// PART 1: Existing Student CRUD Logic (Preserved 100%)
+// =========================================================================
+let showAll = false;
 let editUSN = null;
 
 // Add / Update
 document.getElementById("studentForm").onsubmit = async (e) => {
     e.preventDefault();
 
+    const nameInput = document.getElementById("name");
+    const usnInput = document.getElementById("usn");
+    const branchInput = document.getElementById("branch");
+    const yearInput = document.getElementById("year");
+    const emailInput = document.getElementById("email");
+    const submitBtn = document.getElementById("submitBtn");
+
     const student = {
-        name: name.value,
-        usn: usn.value,
-        branch: branch.value,
-        year: parseInt(year.value),
-        email: email.value
+        name: nameInput.value.trim(),
+        usn: usnInput.value.trim().toUpperCase(),
+        branch: branchInput.value.trim(),
+        year: parseInt(yearInput.value),
+        email: emailInput.value.trim()
     };
 
-    if (editUSN) {
-        await fetch(API + "/" + editUSN, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(student)
-        });
+    try {
+        if (editUSN) {
+            const res = await fetch(API + "/" + editUSN, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(student)
+            });
 
-        alert("Updated ✅");
-        editUSN = null;
+            if (!res.ok) {
+                const err = await res.json();
+                alert("Error updating student: " + (err.detail || "Update failed"));
+                return;
+            }
 
-        submitBtn.textContent = "Add Student";
-        submitBtn.className = "addBtn";
+            alert("Updated ✅");
+            editUSN = null;
+            submitBtn.textContent = "Add Student";
+            submitBtn.className = "addBtn";
+        } else {
+            const res = await fetch(API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(student)
+            });
 
-    } else {
-        await fetch(API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(student)
-        });
+            if (!res.ok) {
+                const err = await res.json();
+                alert("Error adding student: " + (err.detail || "Creation failed"));
+                return;
+            }
 
-        alert("Added ✅");
+            alert("Added ✅");
+        }
+
+        document.getElementById("studentForm").reset();
+        loadStudents();
+    } catch (networkErr) {
+        alert("Network error communicating with backend API: " + networkErr.message);
     }
-
-    studentForm.reset();
-    loadStudents();
 };
 
-// Load
+// Load Students
 async function loadStudents() {
-    const res = await fetch(API);
-    const data = await res.json();
+    const studentList = document.getElementById("studentList");
+    try {
+        const res = await fetch(API);
+        if (!res.ok) {
+            studentList.innerHTML = `<li style="color: red;">Failed to load students (HTTP ${res.status})</li>`;
+            return;
+        }
+        const data = await res.json();
 
-    studentList.innerHTML = "";
+        studentList.innerHTML = "";
 
-    const visibleStudents = showAll ? data : data.slice(0, 3);
+        const visibleStudents = showAll ? data : data.slice(0, 3);
 
-    visibleStudents.forEach((s, index) => {
-        const li = document.createElement("li");
+        visibleStudents.forEach((s, index) => {
+            const li = document.createElement("li");
 
-        li.innerHTML = `
-            <span>
-                <b>${index + 1}.</b> ${s.name} (${s.usn})
-            </span>
+            li.innerHTML = `
+                <span>
+                    <b>${index + 1}.</b> ${s.name} (${s.usn}) - <small>${s.branch || ""} Year ${s.year || ""}</small>
+                </span>
 
-            <div>
-                <button class="viewBtn"
-                    onclick='viewStudent(${JSON.stringify(s)})'>
-                    View
-                </button>
+                <div>
+                    <button class="viewBtn"
+                        onclick='viewStudent(${JSON.stringify(s)})'>
+                        View
+                    </button>
 
-                <button class="editBtn"
-                    onclick='editStudent(${JSON.stringify(s)})'>
-                    Edit
-                </button>
+                    <button class="editBtn"
+                        onclick='editStudent(${JSON.stringify(s)})'>
+                        Edit
+                    </button>
 
-                <button class="deleteBtn"
-                    onclick="deleteStudent('${s.usn}')">
-                    Delete
-                </button>
-            </div>
-        `;
+                    <button class="deleteBtn"
+                        onclick="deleteStudent('${s.usn}')">
+                        Delete
+                    </button>
+                </div>
+            `;
 
-        studentList.appendChild(li);
-    });
+            studentList.appendChild(li);
+        });
 
-    // 👉 Add View More / Show Less button
-    if (data.length > 3) {
-        const btn = document.createElement("p");
+        // Add View More / Show Less button
+        if (data.length > 3) {
+            const btn = document.createElement("p");
+            btn.textContent = showAll ? "Show Less" : "View More";
+            btn.style.color = "#007bff";
+            btn.style.cursor = "pointer";
+            btn.style.textAlign = "center";
+            btn.style.marginTop = "10px";
+            btn.style.fontWeight = "bold";
 
-        btn.textContent = showAll ? "Show Less" : "View More";
-        btn.style.color = "#007bff";   // light blue text
-        btn.style.cursor = "pointer";
-        btn.style.textAlign = "center";
-        btn.style.marginTop = "10px";
+            btn.onclick = () => {
+                showAll = !showAll;
+                loadStudents();
+            };
 
-        btn.onclick = () => {
-            showAll = !showAll;
-            loadStudents();
-        };
-
-        studentList.appendChild(btn);
+            studentList.appendChild(btn);
+        }
+    } catch (err) {
+        studentList.innerHTML = `<li style="color: red;">Backend offline. Please start FastAPI (uvicorn app.main:app).</li>`;
     }
 }
-// Edit
+
+// Edit Student
 function editStudent(student) {
     document.getElementById("name").value = student.name || "";
     document.getElementById("usn").value = student.usn || "";
@@ -200,30 +1337,292 @@ function editStudent(student) {
 
     editUSN = student.usn;
 
+    const submitBtn = document.getElementById("submitBtn");
     submitBtn.textContent = "Update Student";
     submitBtn.className = "updateBtn";
+    document.getElementById("name").focus();
 }
 
+// View Student
 function viewStudent(student) {
     alert(
         "Name: " + student.name + "\n" +
         "USN: " + student.usn + "\n" +
         "Branch: " + student.branch + "\n" +
         "Year: " + student.year + "\n" +
-        "Email: " + student.email
+        "Email: " + student.email + "\n" +
+        (student.attendance_pct !== null && student.attendance_pct !== undefined ? "Attendance: " + student.attendance_pct + "%\n" : "") +
+        (student.previous_gpa !== null && student.previous_gpa !== undefined ? "CGPA: " + student.previous_gpa + "\n" : "") +
+        (student.backlog_count !== null && student.backlog_count !== undefined ? "Backlogs: " + student.backlog_count : "")
     );
 }
 
-// Delete
+// Delete Student
 async function deleteStudent(usn) {
-    await fetch(API + "/" + usn, { method: "DELETE" });
+    if (!confirm(`Are you sure you want to delete student with USN: ${usn}?`)) return;
 
-    alert("Deleted ❌");
-    loadStudents();
+    try {
+        const res = await fetch(API + "/" + usn, { method: "DELETE" });
+        if (!res.ok) {
+            const err = await res.json();
+            alert("Error deleting student: " + (err.detail || "Deletion failed"));
+            return;
+        }
+        alert("Deleted ❌");
+        loadStudents();
+    } catch (err) {
+        alert("Network error: " + err.message);
+    }
 }
 
 // Load initially
 loadStudents();
+
+
+// =========================================================================
+// PART 2: AI Dashboard & Model Metrics Loader
+// =========================================================================
+async function loadAIDashboard() {
+    const loading = document.getElementById("dashboardLoading");
+    const error = document.getElementById("dashboardError");
+    const content = document.getElementById("dashboardContent");
+
+    loading.style.display = "block";
+    error.style.display = "none";
+    content.style.display = "none";
+
+    try {
+        // Fetch health and metrics concurrently
+        const [healthRes, metricsRes] = await Promise.all([
+            fetch(AI_HEALTH_API),
+            fetch(AI_METRICS_API)
+        ]);
+
+        if (!healthRes.ok || !metricsRes.ok) {
+            throw new Error(`AI service responded with HTTP status (Health: ${healthRes.status}, Metrics: ${metricsRes.status}). Ensure backend is running.`);
+        }
+
+        const health = await healthRes.json();
+        const metrics = await metricsRes.json();
+
+        // Populate Health info
+        const healthBadge = document.getElementById("healthBadge");
+        const healthText = document.getElementById("healthText");
+        const healthModelType = document.getElementById("healthModelType");
+        const featuresCount = document.getElementById("featuresCount");
+
+        if (health.status === "healthy") {
+            healthBadge.className = "status-badge healthy";
+            healthText.textContent = "Operational";
+        } else {
+            healthBadge.className = "status-badge unavailable";
+            healthText.textContent = "Degraded";
+        }
+
+        healthModelType.textContent = `${health.model_type || "ML Model"} (${metrics.model_name || ""})`;
+        featuresCount.textContent = health.features_count || 31;
+
+        // Populate Test Metrics
+        const tm = metrics.test_metrics || {};
+        document.getElementById("metricAccuracy").textContent = tm.accuracy ? `${(tm.accuracy * 100).toFixed(1)}%` : "--";
+        document.getElementById("metricRecall").textContent = tm.recall ? `${(tm.recall * 100).toFixed(1)}%` : "--";
+        document.getElementById("metricPrecision").textContent = tm.precision ? `${(tm.precision * 100).toFixed(1)}%` : "--";
+        document.getElementById("metricF1").textContent = tm.f1_score ? `${(tm.f1_score * 100).toFixed(1)}%` : "--";
+        document.getElementById("metricRocAuc").textContent = tm.roc_auc ? `${(tm.roc_auc * 100).toFixed(1)}%` : "--";
+
+        // Confusion Matrix
+        if (tm.confusion_matrix) {
+            const cm = tm.confusion_matrix;
+            document.getElementById("cmTN").innerHTML = `${cm.true_negatives}<br><small>(True Neg)</small>`;
+            document.getElementById("cmFP").innerHTML = `${cm.false_positives}<br><small>(False Pos)</small>`;
+            document.getElementById("cmFN").innerHTML = `${cm.false_negatives}<br><small>(False Neg)</small>`;
+            document.getElementById("cmTP").innerHTML = `${cm.true_positives}<br><small>(True Pos)</small>`;
+        }
+
+        // Comparison Table
+        const cmpr = metrics.comparison_metrics || {};
+        document.getElementById("cmpRFAcc").textContent = tm.accuracy ? `${(tm.accuracy * 100).toFixed(2)}%` : "--";
+        document.getElementById("cmpLRAcc").textContent = cmpr.accuracy ? `${(cmpr.accuracy * 100).toFixed(2)}%` : "--";
+
+        document.getElementById("cmpRFRec").textContent = tm.recall ? `${(tm.recall * 100).toFixed(2)}%` : "--";
+        document.getElementById("cmpLRRec").textContent = cmpr.recall ? `${(cmpr.recall * 100).toFixed(2)}%` : "--";
+
+        document.getElementById("cmpRFPrec").textContent = tm.precision ? `${(tm.precision * 100).toFixed(2)}%` : "--";
+        document.getElementById("cmpLRPrec").textContent = cmpr.precision ? `${(cmpr.precision * 100).toFixed(2)}%` : "--";
+
+        document.getElementById("cmpRFF1").textContent = tm.f1_score ? `${(tm.f1_score * 100).toFixed(2)}%` : "--";
+        document.getElementById("cmpLRF1").textContent = cmpr.f1_score ? `${(cmpr.f1_score * 100).toFixed(2)}%` : "--";
+
+        document.getElementById("cmpRFAuc").textContent = tm.roc_auc ? `${(tm.roc_auc * 100).toFixed(2)}%` : "--";
+        document.getElementById("cmpLRAuc").textContent = cmpr.roc_auc ? `${(cmpr.roc_auc * 100).toFixed(2)}%` : "--";
+
+        loading.style.display = "none";
+        content.style.display = "block";
+    } catch (err) {
+        loading.style.display = "none";
+        error.innerHTML = `
+            <strong>Failed to load AI Dashboard:</strong> ${err.message}<br>
+            <button onclick="loadAIDashboard()" style="margin-top: 8px; padding: 4px 10px; font-size: 12px; background: #dc3545; color: white;">Retry Connection</button>
+        `;
+        error.style.display = "block";
+    }
+}
+
+
+// =========================================================================
+// PART 3: UCI Benchmark Prediction Form & Preset Profiles
+// =========================================================================
+
+const PRESET_PROFILES = {
+    struggling: {
+        school: "GP", sex: "M", age: 18, address: "U", famsize: "GT3", Pstatus: "T",
+        Medu: 1, Fedu: 1, Mjob: "other", Fjob: "other", reason: "course", guardian: "mother",
+        traveltime: 3, studytime: 1, failures: 3, schoolsup: "yes", famsup: "no", paid: "no",
+        activities: "no", nursery: "yes", higher: "no", internet: "no", romantic: "yes",
+        famrel: 2, freetime: 4, goout: 5, Dalc: 3, Walc: 4, health: 2, absences: 22, G1: 4.0
+    },
+    thriving: {
+        school: "GP", sex: "F", age: 16, address: "U", famsize: "LE3", Pstatus: "T",
+        Medu: 4, Fedu: 4, Mjob: "health", Fjob: "teacher", reason: "reputation", guardian: "mother",
+        traveltime: 1, studytime: 4, failures: 0, schoolsup: "no", famsup: "yes", paid: "yes",
+        activities: "yes", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
+        famrel: 5, freetime: 2, goout: 2, Dalc: 1, Walc: 1, health: 5, absences: 0, G1: 18.0
+    },
+    average: {
+        school: "GP", sex: "M", age: 17, address: "U", famsize: "GT3", Pstatus: "T",
+        Medu: 2, Fedu: 2, Mjob: "services", Fjob: "services", reason: "home", guardian: "father",
+        traveltime: 1, studytime: 2, failures: 0, schoolsup: "no", famsup: "yes", paid: "no",
+        activities: "yes", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
+        famrel: 4, freetime: 3, goout: 3, Dalc: 1, Walc: 2, health: 4, absences: 4, G1: 11.0
+    }
+};
+
+function fillPreset(profileKey) {
+    const data = PRESET_PROFILES[profileKey];
+    if (!data) return;
+
+    for (const [key, value] of Object.entries(data)) {
+        const el = document.getElementById(`bm_${key}`);
+        if (el) el.value = value;
+    }
+    // Clear previous prediction results
+    document.getElementById("benchmarkResult").style.display = "none";
+    document.getElementById("predictError").style.display = "none";
+}
+
+function clearBenchmarkForm() {
+    document.getElementById("benchmarkForm").reset();
+    document.getElementById("benchmarkResult").style.display = "none";
+    document.getElementById("predictError").style.display = "none";
+}
+
+async function submitBenchmarkPrediction(e) {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById("predictSubmitBtn");
+    const errorBox = document.getElementById("predictError");
+    const resultBox = document.getElementById("benchmarkResult");
+
+    errorBox.style.display = "none";
+
+    // Gather and parse all 31 inputs matching UCIBenchmarkStudentInput
+    const payload = {
+        school: document.getElementById("bm_school").value,
+        sex: document.getElementById("bm_sex").value,
+        age: parseInt(document.getElementById("bm_age").value),
+        address: document.getElementById("bm_address").value,
+        famsize: document.getElementById("bm_famsize").value,
+        Pstatus: document.getElementById("bm_Pstatus").value,
+        Medu: parseInt(document.getElementById("bm_Medu").value),
+        Fedu: parseInt(document.getElementById("bm_Fedu").value),
+        Mjob: document.getElementById("bm_Mjob").value,
+        Fjob: document.getElementById("bm_Fjob").value,
+        reason: document.getElementById("bm_reason").value,
+        guardian: document.getElementById("bm_guardian").value,
+        traveltime: parseInt(document.getElementById("bm_traveltime").value),
+        studytime: parseInt(document.getElementById("bm_studytime").value),
+        failures: parseInt(document.getElementById("bm_failures").value),
+        schoolsup: document.getElementById("bm_schoolsup").value,
+        famsup: document.getElementById("bm_famsup").value,
+        paid: document.getElementById("bm_paid").value,
+        activities: document.getElementById("bm_activities").value,
+        nursery: document.getElementById("bm_nursery").value,
+        higher: document.getElementById("bm_higher").value,
+        internet: document.getElementById("bm_internet").value,
+        romantic: document.getElementById("bm_romantic").value,
+        famrel: parseInt(document.getElementById("bm_famrel").value),
+        freetime: parseInt(document.getElementById("bm_freetime").value),
+        goout: parseInt(document.getElementById("bm_goout").value),
+        Dalc: parseInt(document.getElementById("bm_Dalc").value),
+        Walc: parseInt(document.getElementById("bm_Walc").value),
+        health: parseInt(document.getElementById("bm_health").value),
+        absences: parseInt(document.getElementById("bm_absences").value),
+        G1: parseFloat(document.getElementById("bm_G1").value)
+    };
+
+    // Prevent duplicate submissions and show loading indicator
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = `<span class="spinner"></span> Evaluating with Random Forest Pipeline...`;
+
+    try {
+        const response = await fetch(AI_PREDICT_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            if (response.status === 422) {
+                // Validation error
+                const details = Array.isArray(errData.detail)
+                    ? errData.detail.map(d => `${d.loc ? d.loc.join('.') : ''}: ${d.msg}`).join("<br>")
+                    : (errData.detail || "Validation error");
+                throw new Error(`Invalid Input (HTTP 422):<br>${details}`);
+            } else if (response.status === 503) {
+                throw new Error(`Model Unavailable (HTTP 503): ${errData.detail || "Model artifacts missing on server."}`);
+            } else {
+                throw new Error(`Server Error (HTTP ${response.status}): ${errData.detail || "Prediction failed"}`);
+            }
+        }
+
+        const data = await response.json();
+
+        // Render result box
+        const isAtRisk = data.is_at_risk;
+        resultBox.className = `result-box ${isAtRisk ? 'at-risk' : 'normal'}`;
+
+        const pill = document.getElementById("resultRiskPill");
+        pill.className = `risk-pill ${isAtRisk ? 'at-risk' : 'normal'}`;
+        document.getElementById("resultIcon").textContent = isAtRisk ? "⚠️" : "✅";
+        document.getElementById("resultStatusText").textContent = data.risk_status;
+
+        document.getElementById("resultModelName").textContent = data.model_name || "Random Forest";
+        document.getElementById("resultRiskLevel").textContent = data.risk_level;
+
+        const probPercent = (data.risk_probability * 100).toFixed(1);
+        document.getElementById("resultRiskProb").textContent = `${probPercent}%`;
+
+        const progressBar = document.getElementById("resultProgressBar");
+        progressBar.style.width = `${probPercent}%`;
+        progressBar.className = `progress-bar ${data.risk_level === 'High' ? 'high-risk' : (data.risk_level === 'Medium' ? 'medium-risk' : 'low-risk')}`;
+
+        document.getElementById("resultConfidence").textContent = `${(data.confidence * 100).toFixed(1)}%`;
+        document.getElementById("resultDisclaimer").textContent = data.disclaimer;
+        document.getElementById("resultDomainNote").textContent = data.domain_applicability_note;
+
+        resultBox.style.display = "block";
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+        errorBox.innerHTML = `<strong>Error:</strong> ${err.message}`;
+        errorBox.style.display = "block";
+        resultBox.style.display = "none";
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
 </script>
 
 </body>

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.routes.student_routes import router as student_router
 from app.routes.ai_routes import router as ai_router
 from app.ml.predictor import load_model_pipeline
@@ -34,6 +35,10 @@ app.add_middleware(
 
 app.include_router(student_router)
 app.include_router(ai_router)
+
+# Mount frontend directory for browser access at /frontend
+app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
+
 
 
 @app.get("/")

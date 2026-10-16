@@ -175,13 +175,65 @@ git clone https://github.com/Adiveppa-git/student-management-system.git
 cd student-management-system
 ```
 
-### 2️⃣ Run Automated Tests
-```bash
-pytest
+### 2️⃣ Environment Variables
+Create a `.env` file in the project root if connecting to a custom MongoDB instance or port (defaults are preconfigured):
+```env
+# MongoDB Connection (Local or Atlas URI)
+MONGO_URI=mongodb://localhost:27017
+DATABASE_NAME=student_management
+
+# Optional Frontend API Base URL (if frontend is hosted on a different host/port)
+# API_BASE_URL=http://127.0.0.1:8000
 ```
 
-### 3️⃣ Start the FastAPI Backend Server
+### 3️⃣ Run Automated Tests
+Execute the comprehensive 41-test suite (CRUD, ML, AI routes, and frontend integration):
+```bash
+pytest -v
+```
+
+### 4️⃣ Start Backend & Access Frontend
+Start the FastAPI server:
 ```bash
 uvicorn app.main:app --reload
 ```
-Interactive OpenAPI / Swagger docs are available at: `http://127.0.0.1:8000/docs`
+
+Once running:
+* **Interactive Frontend UI**: Open [`http://127.0.0.1:8000/frontend/`](http://127.0.0.1:8000/frontend/) in your browser (or open `frontend/index.html` directly).
+* **Interactive OpenAPI / Swagger Docs**: [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs)
+* **Backend API Base**: [`http://127.0.0.1:8000/`](http://127.0.0.1:8000/)
+
+---
+
+# 📖 How to Use the Frontend (Phase 5)
+
+The interface includes a tabbed navigation bar at the top:
+
+### 1. 👨‍🎓 Student Management Tab
+* **Add Student**: Fill in Name, USN, Branch, Year, and Email and click **Add Student**.
+* **View Student**: Click **View** to inspect full academic record details (attendance, CGPA, backlogs).
+* **Edit Student**: Click **Edit** to populate fields and update student data.
+* **Delete Student**: Click **Delete** with confirmation prompt.
+* **View More / Show Less**: Easily toggle between initial view (top 3) and full student list.
+
+### 2. 📊 AI Dashboard Tab
+* **Operational Health**: Displays real-time model status, algorithm name (`RandomForestClassifier`), and evaluated features count (`31`).
+* **Test Metrics Grid**: Holds genuine test-set evaluation numbers (88.61% Accuracy, 84.62% Recall, 81.48% Precision, 83.02% F1-score, 93.54% ROC-AUC).
+* **Confusion Matrix**: Visual 2x2 grid breakdown of true negatives (48), false positives (5), false negatives (4), and true positives (22).
+* **Model Comparison**: Side-by-side comparison between the production Random Forest model and Logistic Regression baseline.
+* **Retry Connection**: Provides an interactive retry button if the backend is temporarily offline.
+
+### 3. 🧪 Benchmark Predictor Tab
+* **Quick-Fill Presets**: Click **🔴 Struggling Student Profile**, **🟢 Thriving Student Profile**, or **🟡 Average Passing Profile** to immediately populate all 31 features for evaluation.
+* **Run Prediction**: Click **⚡ Predict Academic Risk (UCI Model)**.
+* **Inspect Output**: View Risk Status (`At-Risk` vs `Normal`), Risk Probability meter, Confidence score, and Risk Tier (`High`, `Medium`, `Low`).
+* **Domain Disclaimers**: Review the official dataset disclaimer directly in the response box.
+
+---
+
+# ⚠️ Remaining Limitations
+
+1. **Secondary-School Dataset Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
+2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `internal_marks_avg`, `previous_gpa`, `backlog_count`) remain separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
+3. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
+
