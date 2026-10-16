@@ -199,3 +199,50 @@ class CollegeAcademicObservation(BaseModel):
             )
 
         return self
+
+
+class CollegeDatasetAuditResponse(BaseModel):
+    """Structured response for college academic dataset audit and ML readiness assessment."""
+    dataset_name: str = Field(..., description="Name or identifier of the audited dataset/file")
+    total_records: int = Field(..., description="Total rows parsed from the dataset")
+    valid_records_count: int = Field(..., description="Count of records conforming strictly to the schema")
+    invalid_records_count: int = Field(..., description="Count of records with schema or domain validation failures")
+    validation_error_rate: float = Field(..., description="Ratio of invalid records to total records (0.0 to 1.0)")
+    validation_failures_sample: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Sample of validation failure details (row numbers and error messages, without student PII)",
+    )
+    duplicate_observations_count: int = Field(
+        ..., description="Count of duplicate student-semester observation clusters"
+    )
+    duplicate_details: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Details of duplicate student-semester occurrences",
+    )
+    missing_values_by_field: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Count of missing/null values identified per field",
+    )
+    target_leakage_warnings: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Features flagged as potential future-information or post-exam target leakage",
+    )
+    class_balance: Dict[str, Any] = Field(
+        ..., description="Label distribution, class counts, and ratios for verified ground truth"
+    )
+    ml_readiness: Dict[str, Any] = Field(
+        ..., description="ML training readiness decision, status, blocking reasons, and criteria checklist"
+    )
+    database_storage_action: str = Field(
+        default="NONE_INSPECTED_ONLY",
+        description="Confirmation of non-persistence (records are never inserted into MongoDB)",
+    )
+    training_action: str = Field(
+        default="NONE_COLLEGE_TRAINING_BLOCKED",
+        description="Confirmation that model training remains disabled until verified real data is provided",
+    )
+    privacy_guarantee: str = Field(
+        default="Evaluated pseudonymously in-memory. Zero records persisted to MongoDB.",
+        description="Guarantee of student privacy and data protection",
+    )
+

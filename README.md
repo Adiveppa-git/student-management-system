@@ -63,10 +63,11 @@ This project demonstrates real-world concepts like **REST API development, datab
 - `DELETE /students/{usn}` — Delete student record by USN.
 - `DELETE /delete-student/{id}` — Legacy delete by MongoDB ObjectId (preserved for backward compatibility).
 
-### 🤖 AI Academic Risk & Early Warning Endpoints (Phase 4)
+### 🤖 AI Academic Risk & Early Warning Endpoints (Phase 4 & Phase 7)
 - `GET /api/ai/health` — Check model readiness and artifact integrity.
 - `GET /api/ai/model-metrics` — Inspect genuine test-set evaluation metrics, confusion matrix, and limitations.
 - `POST /api/ai/benchmark-predict` — Execute benchmark risk prediction using validated UCI features.
+- `POST /api/ai/college/audit-dataset` — Securely upload, validate, and audit de-identified college CSV datasets (in-memory; zero database writes).
 
 #### Example: `POST /api/ai/benchmark-predict`
 
@@ -187,7 +188,7 @@ DATABASE_NAME=student_management
 ```
 
 ### 3️⃣ Run Automated Tests
-Execute the comprehensive 41-test suite (CRUD, ML, AI routes, and frontend integration):
+Execute the comprehensive 67-test suite (CRUD, ML pipelines, AI routes, frontend integration, college data preparation, and secure dataset import & audit):
 ```bash
 pytest -v
 ```
@@ -291,11 +292,109 @@ A college-specific machine learning model will **NOT** be trained until the foll
 
 ---
 
+# 🔒 Secure College Dataset Import & Audit (Phase 7)
+
+Phase 7 implements a secure, leak-free import and audit pipeline for authorized CSV files containing de-identified engineering-college academic observations.
+
+### 🌐 Audit Endpoint: `POST /api/ai/college/audit-dataset`
+- **Method**: `POST`
+- **Content-Type**: `multipart/form-data` (`file=@dataset.csv`)
+- **Status Codes**:
+  - `200 OK`: Dataset successfully parsed and comprehensive audit report returned.
+  - `400 Bad Request`: File is empty, non-CSV format, or unparseable.
+  - `413 Payload Too Large`: Uploaded file exceeds the 5 MB maximum file size limit.
+  - `422 Unprocessable Entity`: CSV is missing required academic columns.
+  - `500 Internal Server Error`: Unexpected server processing error.
+
+### 📋 Supported CSV Columns
+
+| Column | Type | Required | Default | Bounds / Constraints |
+| :--- | :---: | :---: | :---: | :--- |
+| `student_ref` | `string` | **Yes** | — | Pseudonymous token/hash (3–64 chars, uppercase). **Zero raw PII**. |
+| `branch` | `string` | **Yes** | — | Engineering department code (e.g., `CSE`, `ISE`, `ECE`, `MECH`). |
+| `academic_year` | `integer` | **Yes** | — | Study year (1 to 5). Must align with semester. |
+| `semester` | `integer` | **Yes** | — | Semester number (1 to 10). Must align with study year. |
+| `attendance_pct` | `float` | **Yes** | — | Cumulative attendance percentage (0.0 to 100.0%). |
+| `cie_marks_obtained` | `float` | **Yes** | — | Internal test marks scored ($\ge 0.0$ and $\le \text{cie\_max\_marks}$). |
+| `cie_max_marks` | `float` | No | `50.0` | Maximum marks ceiling for Continuous Internal Evaluation ($> 0.0$). |
+| `program` | `string` | No | `B.Tech` | Degree program (e.g. `B.Tech`, `B.E.`). |
+| `assignment_score_avg` | `float` | No | `None` | Continuous assignment average percentage (0.0 to 100.0%). |
+| `previous_sgpa` | `float` | No | `None` | Preceding semester SGPA (0.0 to 10.0 scale; `None` or 0 for Sem 1). |
+| `cumulative_cgpa` | `float` | No | `None` | Prior cumulative CGPA (0.0 to 10.0 scale; `None` for Sem 1). |
+| `gpa_scale_max` | `float` | No | `10.0` | Explicit maximum GPA ceiling ($> 0.0$). |
+| `active_backlogs` | `integer` | No | `0` | Count of active uncleared backlogs (0 to 30; must be 0 for Sem 1). |
+| `credits_registered` | `float` | No | `20.0` | Course credits enrolled in the observation semester (1.0 to 40.0). |
+| `credits_earned_prior`| `float` | No | `None` | Cumulative earned credits prior to observation semester. |
+| `study_hours_per_week`| `float` | No | `None` | Weekly self-study hours outside instruction (0.0 to 80.0). |
+| `verified_outcome` | `string` | No | `None` | Ground-truth outcome enum (`PASS`, `FAIL_OR_DETAINED`, `ACADEMIC_PROBATION`, `WITHDRAWN`). |
+| `is_at_risk_label` | `boolean` | No | `None` | Binary risk ground-truth label (`true`/`false`). |
+| `outcome_source` | `string` | No* | `None` | Institutional validation authority (*required if `verified_outcome` set). |
+
+### 🛡️ Privacy Precautions & Data Protection
+1. **Strict Pseudonymity**: The pipeline requires pseudonymous student identifiers (`student_ref`). Real-world student names, emails, phone numbers, addresses, passwords, or government IDs are strictly prohibited and never accepted.
+2. **In-Memory Volatility**: The audit executes entirely in memory. Uploaded rows are **never inserted into MongoDB** or written to disk. The existing MongoDB student collection remains completely untouched.
+3. **No Automatic Training**: The import process never automatically triggers college model training or claims predictive accuracy.
+4. **Safe Error Reporting**: Validation failure samples returned in audit reports only display row indices, field names, and error explanations (e.g., `Attendance cannot exceed 100.0%`). No raw record contents are exposed.
+
+### 🚫 Leakage & Quality Validation Rules
+- **Target Leakage Detection**: Scans and flags post-examination features (`see_marks`, `external_marks`, `end_sem_marks`, `promotion_status`, `current_sem_sgpa`). Any leakage flags immediately block ML readiness.
+- **Duplicate Detection**: Flags multiple observations sharing the identical composite key `(student_ref, academic_year, semester)`.
+- **Domain Consistency**: Rejects Semester 1 records reporting prior GPAs or backlogs, and rejects semester/academic-year mismatches (e.g. Year 1 with Semester 5).
+
+### 📊 Example Audit Report (`200 OK`)
+```json
+{
+  "dataset_name": "engineering_college_dataset.csv",
+  "total_records": 120,
+  "valid_records_count": 120,
+  "invalid_records_count": 0,
+  "validation_error_rate": 0.0,
+  "validation_failures_sample": [],
+  "duplicate_observations_count": 0,
+  "duplicate_details": [],
+  "missing_values_by_field": {},
+  "target_leakage_warnings": [],
+  "class_balance": {
+    "total_records_evaluated": 120,
+    "labeled_records_count": 90,
+    "unlabeled_records_count": 30,
+    "binary_risk_distribution": {
+      "at_risk_true_count": 22,
+      "at_risk_false_count": 68,
+      "at_risk_prevalence_pct": 24.44
+    },
+    "verified_outcome_distribution": {
+      "PASS": 68,
+      "FAIL_OR_DETAINED": 22
+    }
+  },
+  "ml_readiness": {
+    "is_ready_for_training": true,
+    "status": "READY_FOR_COLLEGE_MODEL_TRAINING",
+    "blocking_reasons": [],
+    "criteria_checklist": {
+      "sample_size_ge_100": true,
+      "labeled_samples_ge_80": true,
+      "minority_class_ge_15": true,
+      "zero_target_leakage_features": true,
+      "zero_duplicate_observations": true,
+      "error_rate_le_5pct": true
+    }
+  },
+  "database_storage_action": "NONE_INSPECTED_ONLY",
+  "training_action": "NONE_COLLEGE_TRAINING_BLOCKED",
+  "privacy_guarantee": "Evaluated pseudonymously in-memory. Zero records persisted to MongoDB."
+}
+```
+
+---
+
 # ⚠️ Remaining Limitations
 
 1. **Secondary-School Dataset Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
 2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
-3. **No Training on Synthetic Data**: Phase 6 provides data preparation and readiness checks only. College-specific training and predictions remain blocked until an authorized, labeled institutional dataset is available.
+3. **No Training on Synthetic Data**: Phase 6 & Phase 7 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
 4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
+5. **Zero Persistence on Audit**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` performs ephemeral in-memory auditing. No records are written to MongoDB.
 
 

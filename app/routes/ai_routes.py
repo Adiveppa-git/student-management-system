@@ -7,7 +7,7 @@ Provides secure, leak-free, validated endpoints for:
 """
 
 from typing import Any, Dict
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, File, HTTPException, Response, UploadFile, status
 
 from app.models.ai_schemas import (
     BenchmarkPredictionResponse,
@@ -15,6 +15,8 @@ from app.models.ai_schemas import (
     ModelMetricsResponse,
     UCIBenchmarkStudentInput,
 )
+from app.models.college_schemas import CollegeDatasetAuditResponse
+from app.ml.college_data_prep import MAX_CSV_FILE_SIZE_BYTES, parse_and_audit_college_csv
 from app.ml.predictor import (
     check_model_health,
     get_metadata,
@@ -154,3 +156,62 @@ def model_health(response: Response) -> Dict[str, Any]:
     if health["status"] != "healthy":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return health
+
+
+@router.post(
+    "/college/audit-dataset",
+    response_model=CollegeDatasetAuditResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Securely audit an authorized de-identified college CSV dataset",
+    description=(
+        "Uploads a CSV file of de-identified engineering college academic observations. "
+        "Validates 10-point GPA scale, explicit CIE marks, attendance thresholds, detects duplicates, "
+        "flags target leakage, reports class balance, and evaluates ML training readiness. "
+        "Zero records are inserted into MongoDB; college model training remains blocked."
+    ),
+)
+async def audit_college_dataset(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Execute secure in-memory audit of uploaded college academic observation CSV."""
+    filename = file.filename or "dataset.csv"
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only .csv files are supported for college dataset import.",
+        )
+
+    # Read up to size limit (5 MB + 1 KB buffer)
+    try:
+        content = await file.read(MAX_CSV_FILE_SIZE_BYTES + 1024)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error reading uploaded file content.",
+        )
+
+    if len(content) > MAX_CSV_FILE_SIZE_BYTES:
+        max_mb = MAX_CSV_FILE_SIZE_BYTES // (1024 * 1024)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds maximum allowable limit of {max_mb} MB.",
+        )
+
+    try:
+        report = parse_and_audit_college_csv(content, filename=filename)
+        return report
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "missing required column" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=err_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=err_msg,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while auditing the college dataset.",
+        )
+

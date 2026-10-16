@@ -5,8 +5,10 @@ target-leakage inspection, class-balance analysis, and ML readiness evaluation.
 Operates independently of database storage and preserves student privacy.
 """
 
+import csv
+import io
 from collections import Counter
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from pydantic import ValidationError
 
 from app.models.college_schemas import CollegeAcademicObservation
@@ -262,4 +264,151 @@ def analyze_college_dataset(
                 f"error_rate_le_{int(MAX_ALLOWABLE_ERROR_RATE*100)}pct": error_rate <= MAX_ALLOWABLE_ERROR_RATE,
             },
         },
+        "database_storage_action": "NONE_INSPECTED_ONLY",
+        "training_action": "NONE_COLLEGE_TRAINING_BLOCKED",
+        "privacy_guarantee": "Evaluated pseudonymously in-memory. Zero records persisted to MongoDB.",
     }
+
+
+MAX_CSV_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+REQUIRED_COLLEGE_CSV_HEADERS = [
+    "student_ref",
+    "branch",
+    "academic_year",
+    "semester",
+    "attendance_pct",
+    "cie_marks_obtained",
+]
+
+
+def parse_and_audit_college_csv(
+    file_bytes_or_str: Union[bytes, str],
+    filename: str = "college_dataset.csv",
+    max_file_size_bytes: int = MAX_CSV_FILE_SIZE_BYTES,
+) -> Dict[str, Any]:
+    """Parse, validate, and audit a CSV file containing de-identified college academic observations.
+    
+    Enforces:
+    - Maximum file size limit (5 MB default)
+    - File extension validation (.csv)
+    - Non-empty content requirement
+    - Required header columns
+    - Safe type coercion from CSV strings
+    - Complete data quality, duplicate, leakage, and readiness audit
+    - Zero persistence to database
+    - Zero PII in audit output
+    """
+    # 1. Validate filename extension
+    if not filename.lower().endswith(".csv"):
+        raise ValueError("Only .csv files are supported for college dataset import.")
+
+    # 2. Extract and validate raw bytes / text length
+    if isinstance(file_bytes_or_str, str):
+        raw_bytes = file_bytes_or_str.encode("utf-8")
+        raw_text = file_bytes_or_str
+    elif isinstance(file_bytes_or_str, (bytes, bytearray)):
+        raw_bytes = bytes(file_bytes_or_str)
+        try:
+            raw_text = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                raw_text = raw_bytes.decode("latin-1")
+            except Exception as e:
+                raise ValueError("Unable to decode CSV file content with UTF-8 or Latin-1 encoding.")
+    else:
+        raise ValueError("Invalid file content type. Expected bytes or string.")
+
+    # Strip UTF-8 BOM character if still present in string
+    raw_text = raw_text.lstrip("\ufeff")
+
+    if len(raw_bytes) > max_file_size_bytes:
+        max_mb = max_file_size_bytes // (1024 * 1024)
+        raise ValueError(
+            f"File size ({len(raw_bytes)} bytes) exceeds maximum allowable limit of {max_mb} MB."
+        )
+
+    if not raw_text.strip():
+        raise ValueError("Uploaded CSV file is empty.")
+
+    # 3. Parse CSV rows using DictReader
+    try:
+        f_stream = io.StringIO(raw_text)
+        reader = csv.DictReader(f_stream)
+    except Exception as e:
+        raise ValueError(f"Unable to parse CSV file content: {str(e)}")
+
+    if not reader.fieldnames:
+        raise ValueError("CSV file has no header row.")
+
+    # Check for required headers (case-insensitive mapping with BOM stripped)
+    header_map = {col.strip().lstrip("\ufeff").lower(): col for col in reader.fieldnames if col}
+    missing_required = [req for req in REQUIRED_COLLEGE_CSV_HEADERS if req.lower() not in header_map]
+    if missing_required:
+        raise ValueError(
+            f"CSV is missing required column(s): {', '.join(missing_required)}. "
+            f"Required columns are: {', '.join(REQUIRED_COLLEGE_CSV_HEADERS)}."
+        )
+
+    # Convert rows to typed dictionaries
+    parsed_records: List[Dict[str, Any]] = []
+    int_fields = {"academic_year", "semester", "active_backlogs"}
+    float_fields = {
+        "attendance_pct",
+        "cie_marks_obtained",
+        "cie_max_marks",
+        "assignment_score_avg",
+        "previous_sgpa",
+        "cumulative_cgpa",
+        "gpa_scale_max",
+        "credits_registered",
+        "credits_earned_prior",
+        "study_hours_per_week",
+    }
+    bool_fields = {"is_at_risk_label"}
+
+    for row in reader:
+        # Normalize keys to lowercase stripped
+        typed_row: Dict[str, Any] = {}
+        for raw_k, raw_v in row.items():
+            if raw_k is None:
+                continue
+            k = raw_k.strip().lstrip("\ufeff").lower()
+            val = raw_v.strip() if raw_v is not None else ""
+
+            if val == "":
+                typed_row[k] = None
+                continue
+
+            if k in int_fields:
+                try:
+                    typed_row[k] = int(float(val))
+                except ValueError:
+                    typed_row[k] = val  # Keep original string so Pydantic records a clean validation error
+            elif k in float_fields:
+                try:
+                    typed_row[k] = float(val)
+                except ValueError:
+                    typed_row[k] = val
+            elif k in bool_fields:
+                low_val = val.lower()
+                if low_val in ("true", "1", "yes", "t", "y"):
+                    typed_row[k] = True
+                elif low_val in ("false", "0", "no", "f", "n"):
+                    typed_row[k] = False
+                else:
+                    typed_row[k] = val
+            else:
+                typed_row[k] = val
+
+        parsed_records.append(typed_row)
+
+    # 4. Run the comprehensive audit
+    audit_report = analyze_college_dataset(parsed_records, dataset_name=filename)
+
+    # 5. Attach privacy and database action guarantees
+    audit_report["database_storage_action"] = "NONE_INSPECTED_ONLY"
+    audit_report["training_action"] = "NONE_COLLEGE_TRAINING_BLOCKED"
+    audit_report["privacy_guarantee"] = "Evaluated pseudonymously in-memory. Zero records persisted to MongoDB."
+
+    return audit_report
+
