@@ -271,3 +271,25 @@ def test_original_mongodb_records_unaltered_after_csv_audits(sample_valid_csv_co
         assert record is not None, f"Original USN {usn} was altered or removed!"
         assert "cie_marks_obtained" not in record
         assert "verified_outcome" not in record
+
+
+# =========================================================================
+# 5. Phase 9 Hardening: Duplicate Headers & Binary Content Rejection
+# =========================================================================
+
+def test_audit_csv_duplicate_headers_returns_422():
+    """Verify CSV with duplicate column headers returns 422 Unprocessable Entity."""
+    csv_text = "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,branch\nANON_001,CSE,1,1,85.0,40.0,CSE\n"
+    files = {"file": ("dup_headers.csv", csv_text.encode("utf-8"), "text/csv")}
+    response = client.post("/api/ai/college/audit-dataset", files=files)
+    assert response.status_code == 422
+    assert "duplicate column header" in response.json()["detail"].lower()
+
+
+def test_audit_csv_binary_content_returns_400():
+    """Verify binary content or null bytes in CSV returns 400 Bad Request."""
+    corrupted_csv = b"student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained\n\x00\x01\x02,CSE,1,1,85.0,40.0\n"
+    files = {"file": ("binary.csv", corrupted_csv, "text/csv")}
+    response = client.post("/api/ai/college/audit-dataset", files=files)
+    assert response.status_code == 400
+    assert "binary or non-text content detected" in response.json()["detail"].lower()

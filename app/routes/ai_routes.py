@@ -207,7 +207,7 @@ async def audit_college_dataset(file: UploadFile = File(...)) -> Dict[str, Any]:
         return report
     except ValueError as ve:
         err_msg = str(ve)
-        if "missing required column" in err_msg.lower():
+        if "missing required column" in err_msg.lower() or "duplicate column header" in err_msg.lower():
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=err_msg,
@@ -266,7 +266,7 @@ async def analyze_college_dataset_endpoint(file: UploadFile = File(...)) -> Dict
         return report
     except ValueError as ve:
         err_msg = str(ve)
-        if "missing required column" in err_msg.lower():
+        if "missing required column" in err_msg.lower() or "duplicate column header" in err_msg.lower():
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=err_msg,

@@ -432,3 +432,111 @@ def test_analyze_preserves_mongodb_and_no_college_model_trained(valid_120_row_co
     college_artifacts = list(artifacts_dir.glob("college_*.joblib"))
     assert len(college_artifacts) == 0, f"Found unexpected college model artifacts: {college_artifacts}"
 
+
+# =========================================================================
+# 9. Phase 9 Hardening: Duplicate Headers, Binary Content, Boundaries & Safety
+# =========================================================================
+
+def test_analyze_csv_duplicate_column_headers_returns_422():
+    """Verify CSV with duplicate column headers (exact or case-insensitive) returns 422."""
+    # Exact duplicate header
+    csv_exact_dup = "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,student_ref\nANON_001,CSE,1,1,85.0,40.0,ANON_001\n"
+    files = {"file": ("dup_headers.csv", csv_exact_dup.encode("utf-8"), "text/csv")}
+    resp = client.post("/api/ai/college/analyze-dataset", files=files)
+    assert resp.status_code == 422
+    assert "duplicate column header" in resp.json()["detail"].lower()
+    assert "student_ref" in resp.json()["detail"]
+
+    # Case-insensitive duplicate header (Branch vs branch)
+    csv_case_dup = "student_ref,Branch,academic_year,semester,attendance_pct,cie_marks_obtained,branch\nANON_001,CSE,1,1,85.0,40.0,CSE\n"
+    files2 = {"file": ("case_dup_headers.csv", csv_case_dup.encode("utf-8"), "text/csv")}
+    resp2 = client.post("/api/ai/college/analyze-dataset", files=files2)
+    assert resp2.status_code == 422
+    assert "duplicate column header" in resp2.json()["detail"].lower()
+
+
+def test_analyze_csv_binary_content_or_null_bytes_returns_400():
+    """Verify binary content disguised with a .csv extension returns 400 without crashing."""
+    # PNG image header disguised as .csv
+    fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    files = {"file": ("disguised_image.csv", fake_png, "text/csv")}
+    resp = client.post("/api/ai/college/analyze-dataset", files=files)
+    assert resp.status_code == 400
+    assert "binary or non-text content detected" in resp.json()["detail"].lower()
+
+    # CSV with null byte injection
+    corrupted_csv = b"student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained\nSTU_001\x00,CSE,1,1,85.0,40.0\n"
+    files2 = {"file": ("null_byte.csv", corrupted_csv, "text/csv")}
+    resp2 = client.post("/api/ai/college/analyze-dataset", files=files2)
+    assert resp2.status_code == 400
+    assert "binary or non-text content detected" in resp2.json()["detail"].lower()
+
+
+def test_analyze_csv_boundary_size_handling():
+    """Verify exact 5 MB boundary is accepted, while 5 MB + 1 byte returns HTTP 413."""
+    header = "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained\n"
+    row = "ANON_BOUND,CSE,1,1,85.0,40.0\n"
+    base_content = header + row
+    base_bytes = base_content.encode("utf-8")
+    # Pad with newlines up to exactly MAX_CSV_FILE_SIZE_BYTES (5 MB)
+    padding_needed = MAX_CSV_FILE_SIZE_BYTES - len(base_bytes)
+    assert padding_needed > 0
+    exact_5mb_bytes = base_bytes + (b"\n" * padding_needed)
+    assert len(exact_5mb_bytes) == MAX_CSV_FILE_SIZE_BYTES
+
+    files_exact = {"file": ("boundary_exact_5mb.csv", exact_5mb_bytes, "text/csv")}
+    resp_exact = client.post("/api/ai/college/analyze-dataset", files=files_exact)
+    # Must NOT be 413 Payload Too Large
+    assert resp_exact.status_code != 413
+    assert resp_exact.status_code == 200
+
+    # Exceeding by exactly 1 byte: 5,242,881 bytes
+    oversized_bytes = exact_5mb_bytes + b"X"
+    assert len(oversized_bytes) == MAX_CSV_FILE_SIZE_BYTES + 1
+    files_over = {"file": ("boundary_oversized.csv", oversized_bytes, "text/csv")}
+    resp_over = client.post("/api/ai/college/analyze-dataset", files=files_over)
+    assert resp_over.status_code == 413
+    assert "exceeds maximum allowable limit" in resp_over.json()["detail"].lower()
+
+
+def test_analyze_csv_invalid_boolean_and_outcome_labels_handled_safely():
+    """Verify invalid label values and unsupported outcomes are recorded as validation failures safely."""
+    csv_text = (
+        "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,is_at_risk_label,verified_outcome,outcome_source\n"
+        "STU_001,CSE,1,1,85.0,40.0,maybe,PASS,OFFICIAL_EXAM_CELL\n"                # Invalid boolean 'maybe'
+        "STU_002,ECE,1,1,88.0,42.0,false,UNSUPPORTED_OUTCOME,OFFICIAL_EXAM_CELL\n"  # Unsupported outcome literal
+        "STU_003,ISE,1,2,90.0,45.0,false,PASS,OFFICIAL_EXAM_CELL\n"                # Valid row
+    )
+    files = {"file": ("bad_labels.csv", csv_text.encode("utf-8"), "text/csv")}
+    resp = client.post("/api/ai/college/analyze-dataset", files=files)
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["total_records"] == 3
+    assert data["valid_records_count"] == 1
+    assert data["invalid_records_count"] == 2
+    assert len(data["validation_failures_sample"]) == 2
+    # Ensure error details contain the specific issue without exposing sensitive internal data
+    failures = data["validation_failures_sample"]
+    assert any("boolean" in err.lower() for err in failures[0]["errors"])
+    assert any("verified_outcome" in err.lower() or "literal" in err.lower() or "input should be" in err.lower() for err in failures[1]["errors"])
+
+
+def test_analyze_csv_safe_error_responses_no_sensitive_leakage():
+    """Verify error responses never expose database URIs, passwords, or Python tracebacks."""
+    # 400 Bad Request
+    files_bad = {"file": ("empty.csv", b"", "text/csv")}
+    resp = client.post("/api/ai/college/analyze-dataset", files=files_bad)
+    assert resp.status_code == 400
+    detail = resp.json().get("detail", "")
+    assert "Traceback" not in detail
+    assert "mongodb" not in detail.lower()
+    assert "password" not in detail.lower()
+
+    # 422 Missing headers
+    files_missing = {"file": ("missing.csv", b"col_a,col_b\n1,2\n", "text/csv")}
+    resp_missing = client.post("/api/ai/college/analyze-dataset", files=files_missing)
+    assert resp_missing.status_code == 422
+    detail_missing = resp_missing.json().get("detail", "")
+    assert "Traceback" not in detail_missing
+    assert "mongodb" not in detail_missing.lower()

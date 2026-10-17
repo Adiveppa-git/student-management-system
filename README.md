@@ -190,7 +190,7 @@ DATABASE_NAME=student_management
 ```
 
 ### 3️⃣ Run Automated Tests
-Execute the comprehensive 82-test suite (CRUD, ML pipelines, AI routes, frontend integration, college data preparation, secure dataset import & audit, and Phase 8 dataset analysis & model readiness):
+Execute the comprehensive 96-test suite (CRUD, ML pipelines, AI routes, frontend integration, college data preparation, secure dataset import & audit, Phase 8 dataset analysis & model readiness, and Phase 9 security hardening):
 ```bash
 pytest -v
 ```
@@ -523,13 +523,38 @@ Phase 8 extends the college data framework with an in-depth data quality audit, 
 }
 ```
 
+# 🛡️ Testing, Security, and Validation Hardening (Phase 9)
+
+Phase 9 implements comprehensive security hardening, data integrity verification, and validation resilience across backend endpoints, ML artifacts, and frontend interfaces:
+
+### 1. Robust Upload Validation & Attack Surface Reduction
+- **Duplicate Column Header Rejection**: Enforces uniqueness across CSV headers. Files containing exact or case-insensitive duplicate column names (e.g., `Branch,branch` or `student_ref,...,student_ref`) are rejected with `HTTP 422 Unprocessable Entity`.
+- **Disguised Binary & Non-Text Content Detection**: Safely verifies uploaded payload bytes prior to parsing. Files with null bytes (`\x00`) or binary signatures (e.g., PNG/executable headers disguised with `.csv` extensions) are rejected with `HTTP 400 Bad Request` without server crashes.
+- **Strict CSV Syntax Enforcement**: Employs `csv.DictReader(strict=True)` to detect unclosed quotes, malformed line endings, or invalid delimiter sequences.
+- **Precise 5 MB Boundary Enforcement**: Confirmed that uploads at the exact boundary of 5,242,880 bytes (5 MB) process cleanly in memory, while uploads of 5,242,881 bytes (5 MB + 1 byte) are cleanly rejected with `HTTP 413 Payload Too Large`.
+- **Information Disclosure Prevention**: Error responses return sanitized client error messages without internal file paths, usernames, database credentials, connection strings, or Python tracebacks.
+
+### 2. Verified Data Integrity & Zero Persistence
+- **Zero Database Persistence**: College CSV uploads through `POST /api/ai/college/audit-dataset` and `POST /api/ai/college/analyze-dataset` are processed exclusively in-memory. Zero records are inserted, updated, or removed from MongoDB.
+- **Original Student Record Preservation**: Automated regression tests verify that MongoDB student document count remains unchanged and the 6 original student documents (`1DB24IS045`, `1DB23IS001`, `1DB25EC096`, `1DB25CS009`, `1DB23IS069`, `1DB22CS020`) retain their exact original fields without AI prediction leakage.
+- **Zero Disk Caching**: Uploaded files and temporary records are never written to the local filesystem or temp directory.
+
+### 3. Benchmark ML Artifact Immutability (SHA-256 Verified)
+- **Artifact Immutability**: Cryptographic SHA-256 hashes of all existing model artifacts (`student_risk_pipeline.joblib`, `logistic_regression_pipeline.joblib`, `metadata.json`, `metrics.json`) are verified before and after dataset audits/analyses, ensuring byte-for-byte integrity.
+- **No Accidental Model Training**: Automated regression tests confirm that zero college-specific models (`college_*.joblib`) are created or trained during any dataset inspection or evaluation.
+
+### 4. Frontend Provenance & Readiness Clarification
+- **Demo vs. Real Data Distinction**: The UI explicitly flags synthetic demo presets with a distinct `🧪 Synthetic Demonstration Cohort` banner to prevent confusing demonstration samples with actual college records. Real uploaded files are marked with `🏛️ Uploaded Local Institutional Data`.
+- **Readiness Significance**: Clear explanatory callout clarifies that `READY_FOR_REVIEW` indicates compliance with preliminary structural and statistical thresholds for offline faculty review. It explicitly does **not** certify institutional representativeness, algorithmic fairness, or production model deployment readiness.
+- **Accessibility & Safe Error Handling**: Enhanced with `role="alert"`, `aria-live="polite"`, `aria-label` tags, and safe handling of malformed API responses.
+
 ---
 
 # ⚠️ Remaining Limitations & Privacy Guarantees
 
 1. **Secondary-School Benchmark Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
 2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain strictly separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
-3. **No Training on Synthetic Data**: Phase 6, Phase 7, and Phase 8 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
+3. **No Training on Synthetic Data**: Phase 6, Phase 7, Phase 8, and Phase 9 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
 4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
 5. **Zero Persistence on Audit / Analysis**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` or `POST /api/ai/college/analyze-dataset` executes entirely in memory. Zero records are written to MongoDB. The 6 original MongoDB student records remain completely untouched.
 6. **No Production Readiness Claims**: A status of `READY_FOR_REVIEW` indicates structural and statistical readiness for offline experimental evaluation; it does not constitute approval for production deployment. Institutional sign-off, ethical review, and leak-free validation protocol design are required.
@@ -545,7 +570,7 @@ pytest -v
 
 **Actual Test Output**:
 ```text
-======================= 82 passed, 6 warnings in 5.25s =======================
+======================= 96 passed, 7 warnings in 4.57s =======================
 ```
-* **82 tests passed** across student CRUD operations, ML model pipelines, AI routing, frontend integration, college data preparation, secure dataset import/audit, and Phase 8 dataset analysis and model readiness.
+* **96 tests passed** across student CRUD operations, ML model pipelines, AI routing, frontend integration, college data preparation, secure dataset import/audit, Phase 8 dataset analysis and model readiness, and Phase 9 security, data integrity, and hardening regression tests.
 * **0 failures**, **0 errors**.

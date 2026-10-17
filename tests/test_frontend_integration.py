@@ -166,3 +166,28 @@ def test_college_dataset_analysis_tab_elements_present():
     assert "loadDemoCohort" in content
     assert "submitCollegeAnalysis" in content
     assert "renderAnalysisReport" in content
+
+
+def test_phase_9_frontend_hardening_and_clarity():
+    """Verify Phase 9 frontend hardening: demo vs real provenance banner, readiness note, and accessibility."""
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+
+    # 1. Dataset Provenance elements (distinguishing demo from real institutional data)
+    assert 'id="datasetProvenanceBanner"' in content
+    assert 'id="provenanceIcon"' in content
+    assert 'id="provenanceText"' in content
+    assert "Synthetic Demonstration Cohort" in content
+    assert "Uploaded Local Institutional Data" in content
+    assert "NOT actual institutional data" in content or "not actual institutional data" in content.lower()
+
+    # 2. Readiness status explanation note
+    assert 'id="readinessExplanatoryNote"' in content
+    assert 'id="readinessExplanationText"' in content
+    assert "does NOT prove institutional representativeness" in content or "does not prove institutional representativeness" in content.lower()
+    assert "production readiness" in content.lower() or "production model deployment readiness" in content.lower()
+
+    # 3. Accessibility enhancements
+    assert 'aria-label="Upload College Academic Observations CSV"' in content
+    assert 'role="alert"' in content
+    assert 'aria-live="polite"' in content
+    assert 'aria-live="assertive"' in content

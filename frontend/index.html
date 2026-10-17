@@ -1291,37 +1291,43 @@
             </div>
 
             <div class="file-drop-area" id="fileDropArea">
-                <input type="file" id="collegeCsvInput" accept=".csv" style="display: none;" onchange="handleFileSelected(event)">
+                <input type="file" id="collegeCsvInput" accept=".csv" aria-label="Upload College Academic Observations CSV" style="display: none;" onchange="handleFileSelected(event)">
                 <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
                 <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Choose a College Academic Observations CSV</p>
                 <p id="selectedFileName" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">No file currently selected (max 5 MB)</p>
-                <button type="button" class="tab-btn" style="background: #e2e8f0; color: #1e293b; display: inline-flex;" onclick="document.getElementById('collegeCsvInput').click()">
+                <button type="button" class="tab-btn" aria-label="Browse local files" style="background: #e2e8f0; color: #1e293b; display: inline-flex;" onclick="document.getElementById('collegeCsvInput').click()">
                     📂 Browse Local Computer...
                 </button>
             </div>
 
             <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                 <span style="font-size: 12px; color: var(--text-muted);">Ephemerally processed in memory. Zero database persistence.</span>
-                <button id="analyzeDatasetBtn" class="addBtn" type="button" onclick="submitCollegeAnalysis()" style="padding: 10px 22px; font-size: 14px; font-weight: 600; width: auto;" disabled>
+                <button id="analyzeDatasetBtn" class="addBtn" type="button" onclick="submitCollegeAnalysis()" aria-label="Analyze dataset and assess ML readiness" style="padding: 10px 22px; font-size: 14px; font-weight: 600; width: auto;" disabled>
                     ⚡ Analyze Dataset & Assess Readiness
                 </button>
             </div>
 
             <!-- Loading Indicator -->
-            <div id="analysisLoading" style="display: none; text-align: center; padding: 28px; color: var(--text-muted);">
+            <div id="analysisLoading" role="status" aria-live="polite" style="display: none; text-align: center; padding: 28px; color: var(--text-muted);">
                 <div class="spinner" style="border-top-color: var(--primary); width: 28px; height: 28px;"></div>
                 <p style="margin-top: 10px; font-weight: 600;">Profiling dataset in-memory and evaluating 7-point readiness criteria...</p>
             </div>
 
             <!-- Error Banner -->
-            <div id="analysisError" class="error-banner"></div>
+            <div id="analysisError" class="error-banner" role="alert" aria-live="assertive"></div>
         </div>
 
         <!-- Analysis & Readiness Results Container -->
-        <div id="analysisResults" style="display: none;">
+        <div id="analysisResults" style="display: none;" aria-live="polite">
 
             <!-- Readiness Status Decision Card -->
             <div class="card" id="readinessStatusCard">
+                <!-- Cohort Provenance Banner (distinguishes demo from real institutional data) -->
+                <div id="datasetProvenanceBanner" style="margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                    <span id="provenanceIcon">🧪</span>
+                    <span id="provenanceText">Synthetic Demonstration Cohort — For demonstration & validation testing only; not actual institutional data.</span>
+                </div>
+
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
                     <div>
                         <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">ML Training Readiness Status</div>
@@ -1336,6 +1342,11 @@
                         Dataset: <strong id="analyzedDatasetName" style="color: var(--text-main);">dataset.csv</strong><br>
                         Pipeline: <strong>FastAPI &bull; In-Memory &bull; Zero DB Persistence</strong>
                     </div>
+                </div>
+
+                <!-- Explicit Explanatory Note on READY_FOR_REVIEW vs Production -->
+                <div id="readinessExplanatoryNote" style="font-size: 12.5px; color: #334155; margin-bottom: 14px; line-height: 1.45; background: #f8fafc; border-left: 4px solid var(--primary); padding: 9px 14px; border-radius: 0 6px 6px 0;">
+                    <strong>Readiness Significance:</strong> <span id="readinessExplanationText">READY_FOR_REVIEW indicates that the dataset satisfies preliminary schema and statistical thresholds for offline human review. It does NOT prove institutional representativeness, algorithmic fairness, or production readiness.</span>
                 </div>
 
                 <div id="blockersBox" class="alert-card blocker" style="display: none;">
@@ -2001,10 +2012,12 @@ async function submitBenchmarkPrediction(e) {
 // =========================================================================
 
 let selectedCollegeFile = null;
+let isDemoCohort = false;
 
 function handleFileSelected(event) {
     const file = event.target.files[0];
     if (file) {
+        isDemoCohort = false;
         setCollegeFile(file);
     }
 }
@@ -2020,6 +2033,7 @@ function setCollegeFile(file) {
 
 function clearAnalysisView() {
     selectedCollegeFile = null;
+    isDemoCohort = false;
     const input = document.getElementById("collegeCsvInput");
     if (input) input.value = "";
     document.getElementById("selectedFileName").textContent = "No file currently selected (max 5 MB)";
@@ -2030,6 +2044,7 @@ function clearAnalysisView() {
 }
 
 function loadDemoCohort(type) {
+    isDemoCohort = true;
     let csvText = "";
     let filename = "";
 
@@ -2105,14 +2120,17 @@ async function submitCollegeAnalysis() {
             if (response.status === 413) {
                 errorMsg = `File Size Exceeded (HTTP 413): ${errData.detail || 'Maximum allowable size is 5 MB.'}`;
             } else if (response.status === 422) {
-                errorMsg = `Header Schema Error (HTTP 422): ${errData.detail || 'Missing required column headers.'}`;
+                errorMsg = `Header Schema Error (HTTP 422): ${errData.detail || 'Missing required column headers or duplicate column headers detected.'}`;
             } else if (response.status === 400) {
                 errorMsg = `Invalid File Format (HTTP 400): ${errData.detail || 'Could not parse CSV content.'}`;
             }
             throw new Error(errorMsg);
         }
 
-        const data = await response.json();
+        const data = await response.json().catch(() => null);
+        if (!data || typeof data !== "object") {
+            throw new Error("Malformed API response received from server.");
+        }
         renderAnalysisReport(data);
 
         loading.style.display = "none";
@@ -2130,9 +2148,39 @@ async function submitCollegeAnalysis() {
 }
 
 function renderAnalysisReport(data) {
-    const readiness = data.readiness_assessment || {};
+    const readiness = (data && data.readiness_assessment) || {};
     const status = readiness.status || "TRAINING_BLOCKED";
     const isReady = readiness.is_ready_for_review;
+
+    // 0. Update Provenance Banner (distinguishes demo from real institutional data)
+    const provenanceBanner = document.getElementById("datasetProvenanceBanner");
+    const provenanceIcon = document.getElementById("provenanceIcon");
+    const provenanceText = document.getElementById("provenanceText");
+    if (provenanceBanner) {
+        if (isDemoCohort) {
+            provenanceBanner.style.background = "#fff8e6";
+            provenanceBanner.style.border = "1px solid #ffd166";
+            provenanceBanner.style.color = "#996500";
+            if (provenanceIcon) provenanceIcon.textContent = "🧪";
+            if (provenanceText) provenanceText.innerHTML = "<strong>Synthetic Demonstration Cohort:</strong> This analysis was run on a synthetic demo profile for testing and validation. <strong>Do NOT interpret these results as real institutional engineering student data.</strong>";
+        } else {
+            provenanceBanner.style.background = "#eff6ff";
+            provenanceBanner.style.border = "1px solid #bfdbfe";
+            provenanceBanner.style.color = "#1e40af";
+            if (provenanceIcon) provenanceIcon.textContent = "🏛️";
+            if (provenanceText) provenanceText.innerHTML = "<strong>Uploaded Local Institutional Data:</strong> Evaluated ephemerally in-memory. Zero records persisted to MongoDB. Zero student PII accepted or stored.";
+        }
+    }
+
+    // 0b. Update Readiness Significance Text
+    const explanationEl = document.getElementById("readinessExplanationText");
+    if (explanationEl) {
+        if (isReady) {
+            explanationEl.innerHTML = "<strong>READY_FOR_REVIEW</strong> indicates that the uploaded dataset satisfies structural formatting and statistical criteria (sample size &ge; 100, verified labels &ge; 80, minority &ge; 15, zero target leakage, zero duplicates, error rate &le; 5%) for prospective offline human review. <em>It does NOT prove institutional representativeness, algorithmic fairness, or production model deployment readiness.</em>";
+        } else {
+            explanationEl.innerHTML = "<strong>TRAINING_BLOCKED</strong> indicates that the dataset violates one or more data-quality or experimental safety criteria. Model training remains strictly blocked until all specified blockers are resolved.";
+        }
+    }
 
     // 1. Overall Status Card
     const badge = document.getElementById("readinessBadge");
@@ -2149,7 +2197,7 @@ function renderAnalysisReport(data) {
         splitBadge.textContent = "Split Not Feasible";
     }
 
-    document.getElementById("analyzedDatasetName").textContent = data.dataset_name || "dataset.csv";
+    document.getElementById("analyzedDatasetName").textContent = (data && data.dataset_name) || "dataset.csv";
 
     // 2. Blockers and Warnings
     const blockersBox = document.getElementById("blockersBox");

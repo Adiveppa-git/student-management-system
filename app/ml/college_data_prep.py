@@ -313,6 +313,10 @@ def parse_college_csv_rows(
     else:
         raise ValueError("Invalid file content type. Expected bytes or string.")
 
+    # Check for null bytes or binary corruption
+    if b"\x00" in raw_bytes or "\x00" in raw_text:
+        raise ValueError("Binary or non-text content detected. Uploaded file must be a valid plain-text CSV.")
+
     # Strip UTF-8 BOM character if still present in string
     raw_text = raw_text.lstrip("\ufeff")
 
@@ -325,79 +329,98 @@ def parse_college_csv_rows(
     if not raw_text.strip():
         raise ValueError("Uploaded CSV file is empty.")
 
-    # 3. Parse CSV rows using DictReader
+    # 3. Parse CSV rows using DictReader with safe error handling
     try:
         f_stream = io.StringIO(raw_text)
-        reader = csv.DictReader(f_stream)
-    except Exception as e:
-        raise ValueError(f"Unable to parse CSV file content: {str(e)}")
+        reader = csv.DictReader(f_stream, strict=True)
 
-    if not reader.fieldnames:
-        raise ValueError("CSV file has no header row.")
+        if not reader.fieldnames:
+            raise ValueError("CSV file has no header row.")
 
-    # Check for required headers (case-insensitive mapping with BOM stripped)
-    header_map = {col.strip().lstrip("\ufeff").lower(): col for col in reader.fieldnames if col}
-    missing_required = [req for req in REQUIRED_COLLEGE_CSV_HEADERS if req.lower() not in header_map]
-    if missing_required:
-        raise ValueError(
-            f"CSV is missing required column(s): {', '.join(missing_required)}. "
-            f"Required columns are: {', '.join(REQUIRED_COLLEGE_CSV_HEADERS)}."
-        )
+        # Check for duplicate column headers (case-insensitive detection)
+        raw_headers = [col.strip().lstrip("\ufeff") for col in reader.fieldnames if col is not None]
+        seen_headers = set()
+        duplicate_headers = []
+        for col in raw_headers:
+            normalized = col.lower()
+            if normalized in seen_headers:
+                if col not in duplicate_headers:
+                    duplicate_headers.append(col)
+            else:
+                seen_headers.add(normalized)
 
-    # Convert rows to typed dictionaries
-    parsed_records: List[Dict[str, Any]] = []
-    int_fields = {"academic_year", "semester", "active_backlogs"}
-    float_fields = {
-        "attendance_pct",
-        "cie_marks_obtained",
-        "cie_max_marks",
-        "assignment_score_avg",
-        "previous_sgpa",
-        "cumulative_cgpa",
-        "gpa_scale_max",
-        "credits_registered",
-        "credits_earned_prior",
-        "study_hours_per_week",
-    }
-    bool_fields = {"is_at_risk_label"}
+        if duplicate_headers:
+            raise ValueError(
+                f"Duplicate column header(s) detected in CSV: {', '.join(duplicate_headers)}. "
+                "Column headers must be unique."
+            )
 
-    for row in reader:
-        typed_row: Dict[str, Any] = {}
-        for raw_k, raw_v in row.items():
-            if raw_k is None:
-                continue
-            k = raw_k.strip().lstrip("\ufeff").lower()
-            val = raw_v.strip() if raw_v is not None else ""
+        # Check for required headers (case-insensitive mapping with BOM stripped)
+        header_map = {col.strip().lstrip("\ufeff").lower(): col for col in reader.fieldnames if col}
+        missing_required = [req for req in REQUIRED_COLLEGE_CSV_HEADERS if req.lower() not in header_map]
+        if missing_required:
+            raise ValueError(
+                f"CSV is missing required column(s): {', '.join(missing_required)}. "
+                f"Required columns are: {', '.join(REQUIRED_COLLEGE_CSV_HEADERS)}."
+            )
 
-            if val == "":
-                typed_row[k] = None
-                continue
+        # Convert rows to typed dictionaries
+        parsed_records: List[Dict[str, Any]] = []
+        int_fields = {"academic_year", "semester", "active_backlogs"}
+        float_fields = {
+            "attendance_pct",
+            "cie_marks_obtained",
+            "cie_max_marks",
+            "assignment_score_avg",
+            "previous_sgpa",
+            "cumulative_cgpa",
+            "gpa_scale_max",
+            "credits_registered",
+            "credits_earned_prior",
+            "study_hours_per_week",
+        }
+        bool_fields = {"is_at_risk_label"}
 
-            if k in int_fields:
-                try:
-                    typed_row[k] = int(float(val))
-                except ValueError:
-                    typed_row[k] = val  # Keep original string so Pydantic records a clean validation error
-                continue
-            elif k in float_fields:
-                try:
-                    typed_row[k] = float(val)
-                except ValueError:
-                    typed_row[k] = val
-                continue
-            elif k in bool_fields:
-                low_val = val.lower()
-                if low_val in ("true", "1", "yes", "t", "y"):
-                    typed_row[k] = True
-                elif low_val in ("false", "0", "no", "f", "n"):
-                    typed_row[k] = False
+        for row in reader:
+            typed_row: Dict[str, Any] = {}
+            for raw_k, raw_v in row.items():
+                if raw_k is None:
+                    continue
+                k = raw_k.strip().lstrip("\ufeff").lower()
+                val = raw_v.strip() if raw_v is not None else ""
+
+                if val == "":
+                    typed_row[k] = None
+                    continue
+
+                if k in int_fields:
+                    try:
+                        typed_row[k] = int(float(val))
+                    except ValueError:
+                        typed_row[k] = val  # Keep original string so Pydantic records a clean validation error
+                    continue
+                elif k in float_fields:
+                    try:
+                        typed_row[k] = float(val)
+                    except ValueError:
+                        typed_row[k] = val
+                    continue
+                elif k in bool_fields:
+                    low_val = val.lower()
+                    if low_val in ("true", "1", "yes", "t", "y"):
+                        typed_row[k] = True
+                    elif low_val in ("false", "0", "no", "f", "n"):
+                        typed_row[k] = False
+                    else:
+                        typed_row[k] = val
+                    continue
                 else:
                     typed_row[k] = val
-                continue
-            else:
-                typed_row[k] = val
 
-        parsed_records.append(typed_row)
+            parsed_records.append(typed_row)
+
+    except csv.Error as ce:
+        raise ValueError(f"Malformed CSV content: {str(ce)}")
 
     return parsed_records, filename
 
