@@ -1,0 +1,29 @@
+# =============================================================================
+# Student Management System - Dependency Manifest
+# =============================================================================
+# Generated from verified imports and active runtime environment.
+# Runtime dependencies specify compatible versions pinned to verified baselines.
+# =============================================================================
+
+# --- Web Framework & HTTP Server ---
+fastapi>=0.104.1,<0.105.0
+uvicorn[standard]>=0.24.0,<0.25.0
+pydantic>=2.10.0,<3.0.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0,<2.0.0
+
+# --- Database & MongoDB Driver ---
+pymongo>=4.6.0,<5.0.0
+
+# --- Machine Learning, Mathematics & Data Analysis ---
+numpy>=1.24.0,<3.0.0
+scipy>=1.11.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+scikit-learn>=1.3.0,<1.8.0
+joblib>=1.3.0,<2.0.0
+requests>=2.31.0,<3.0.0
+
+# --- Testing & Quality Assurance ---
+# Identified for running automated test suites (pytest -v)
+pytest>=8.0.0,<10.0.0
+httpx>=0.25.0,<1.0.0

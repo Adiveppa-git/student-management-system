@@ -1,5 +1,44 @@
+# Byte-compiled / optimized / cache files
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*$py.class
 .pytest_cache/
-*.zip
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Editor / IDE configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testing and coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# Logs
+*.log
+logs/
+
+# Compressed and archive files
+*.zip
+*.tar.gz
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db

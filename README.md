@@ -1,6 +1,6 @@
 # 📝 Student Management System
 
-🚀 **Student Management System** is a full-stack web application designed to manage student records efficiently.  
+🚀 **Student Management System** is a full-stack web application designed to manage student records efficiently.
 It supports basic operations like **adding, viewing, updating, and deleting students** with a clean UI.
 
 This project demonstrates real-world concepts like **REST API development, database integration, and dynamic frontend interaction**.
@@ -34,26 +34,101 @@ This project demonstrates real-world concepts like **REST API development, datab
 # ✨ Core Features
 
 ### 👨‍🎓 Student Features
-- ➕ Add student  
-- 📋 View student list  
-- ✏️ Edit student details  
-- ❌ Delete student  
-- 👁 View full student information  
+- ➕ Add student
+- 📋 View student list
+- ✏️ Edit student details
+- ❌ Delete student
+- 👁 View full student information
 
 ---
 
 ### 🎨 UI Features
-- 📊 Serial number display  
-- 🔽 View More / Show Less option  
-- 🎯 Color-coded buttons  
-  - 🔵 Add  
-  - 🟢 Update  
-  - 🟡 Edit  
-  - 🔴 Delete  
+- 📊 Serial number display
+- 🔽 View More / Show Less option
+- 🎯 Color-coded buttons
+  - 🔵 Add
+  - 🟢 Update
+  - 🟡 Edit
+  - 🔴 Delete
+
+---
+
+# ⚙️ Quick Start & Environment Configuration
+
+### 1. Prerequisites
+- **Python**: Version 3.10 or higher.
+- **MongoDB**: Version 4.4 or higher running locally or via a cloud instance.
+- **Git**: For version control.
+
+### 2. Environment Setup & Dependency Installation
+Create and activate an isolated virtual environment:
+```bash
+# Clone the repository (if not already cloned)
+git clone https://github.com/Adiveppa-git/student-management-system.git
+cd student-management-system
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows (Command Prompt / PowerShell):
+venv\Scripts\activate
+# On Linux / macOS:
+source venv/bin/activate
+
+# Install dependencies from manifest
+pip install -r requirements.txt
+```
+
+### 3. Environment Variables Configuration
+Copy the configuration template to initialize your local `.env`:
+```bash
+cp .env.example .env
+```
+The application uses `python-dotenv` with `override=False` to load configuration without overriding environment variables set in the host shell, Docker container, or CI/CD runner.
+
+| Variable | Required | Default | Precedence & Description |
+| :--- | :---: | :--- | :--- |
+| `MONGO_URI` | Optional | `mongodb://localhost:27017/` | Connection URI for MongoDB. Supports standalone, replica sets, and authenticated clusters. |
+| `DATABASE_NAME` | Optional | `student_db` | **Primary database name variable**. Takes precedence over `DB_NAME`. |
+| `DB_NAME` | Optional | `student_db` | **Legacy fallback variable**. Preserved for backward compatibility with older deployments. |
+| `CORS_ORIGINS` | Optional | Local dev origins | Comma-separated list of allowed frontend origins (see CORS section below). |
+| `APP_HOST` | Optional | `127.0.0.1` | Application server bind address. |
+| `APP_PORT` | Optional | `8000` | Application server bind port. |
+
+> [!IMPORTANT]
+> **Database Name Resolution Precedence**:
+> `DATABASE_NAME` takes precedence if explicitly supplied. If `DATABASE_NAME` is not set or empty, the application falls back to `DB_NAME`. If neither is defined, the system defaults safely to `"student_db"`.
+
+### 4. Cross-Origin Resource Sharing (CORS) Configuration
+- **Local Development Default**: If `CORS_ORIGINS` is unset, the application automatically permits standard local development servers:
+  `http://localhost:8000`, `http://127.0.0.1:8000`, `http://localhost:3000`, `http://127.0.0.1:3000`, `http://localhost:5500`, `http://127.0.0.1:5500` with `allow_credentials=True`.
+- **Production Frontend Configuration**: Set `CORS_ORIGINS` to a comma-separated list of explicit origin URLs without trailing slashes:
+  ```env
+  CORS_ORIGINS=https://student-system.your-college.edu,https://admin.your-college.edu
+  ```
+- **Strict Wildcard Protection**: Under browser CORS specifications (RFC 6454 / Fetch Spec), combining a wildcard origin (`*`) with credentials (`allow_credentials=True`) is invalid and blocked by modern browsers. If wildcard `*` is specified in `CORS_ORIGINS`, the application automatically sets `allow_credentials=False` to avoid security vulnerabilities.
+
+### 5. Running the Application
+Ensure MongoDB is running, then launch the FastAPI server using Uvicorn:
+```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+- **API Root**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- **Interactive Swagger Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Alternative ReDoc Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- **Web Frontend**: [http://127.0.0.1:8000/frontend](http://127.0.0.1:8000/frontend)
+
+### 6. Running Automated Tests
+Execute the full test suite with verbose output:
+```bash
+pytest -v
+```
 
 ---
 
 # 🔗 API Features
+
 
 ### 🎓 Student CRUD Endpoints
 - `POST /students` — Create new student record (with Pydantic validation and USN uniqueness check).
@@ -552,12 +627,49 @@ Phase 9 implements comprehensive security hardening, data integrity verification
 
 # ⚠️ Remaining Limitations & Privacy Guarantees
 
-1. **Secondary-School Benchmark Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
-2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain strictly separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
-3. **No Training on Synthetic Data**: Phase 6, Phase 7, Phase 8, and Phase 9 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
+1. **Secondary-School Benchmark Limitation**:
+   - The pre-trained benchmark model in `app/ml/artifacts/` was trained exclusively on Portuguese secondary-school mathematics students (Cortez & Silva, 2008).
+   - Its features operate on a 0–20 grading scale and require secondary-school demographic indicators (e.g., parental cohabitation, family support, travel time, and absence counts).
+   - It is **NOT** calibrated, validated, or clinically intended for making academic determinations for Indian engineering college students (VTU / AICTE credit systems, USN, branches, CIE/SEE marks, SGPA/CGPA, and active backlogs).
+   - Benchmark predictions are provided strictly for comparative evaluation and baseline demonstration.
+
+2. **College-Specific Training is NOT Implemented or Authorized**:
+   - Phases 6 through 10.2 implement data preparation, schema validation, dataset profiling, and deployment configuration remediation only.
+   - **No college-specific ML model has been trained, and college-specific training is strictly unauthorized by this change.**
+   - All dataset import and analysis endpoints (`POST /api/ai/college/audit-dataset` and `POST /api/ai/college/analyze-dataset`) execute strictly in-memory without persisting records or triggering model training.
+
+3. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain strictly separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection and institutional sign-off.
 4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
 5. **Zero Persistence on Audit / Analysis**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` or `POST /api/ai/college/analyze-dataset` executes entirely in memory. Zero records are written to MongoDB. The 6 original MongoDB student records remain completely untouched.
 6. **No Production Readiness Claims**: A status of `READY_FOR_REVIEW` indicates structural and statistical readiness for offline experimental evaluation; it does not constitute approval for production deployment. Institutional sign-off, ethical review, and leak-free validation protocol design are required.
+
+---
+
+# 🛡️ Safe Deployment Configuration Remediation (Phase 10.2)
+
+Phase 10.2 implements non-breaking, safety-hardened configuration and deployment readiness updates based on the Phase 10.1 audit report:
+
+1. **Enhanced Repository Hygiene (`.gitignore`)**:
+   - Added ignore patterns for virtual environments (`.venv/`, `venv/`, `env/`), editor artifacts (`.vscode/`, `.idea/`), test coverage (`.coverage`, `htmlcov/`), application logs (`*.log`, `logs/`), and operating system metadata (`.DS_Store`, `Thumbs.db`).
+   - Verified that zero sensitive files, virtual environments, or credentials are tracked in Git.
+
+2. **Environment Variable Configuration & Safe Loading**:
+   - Integrated `python-dotenv` with `override=False` to respect environment variables explicitly passed by the OS, container runtime, or CI/CD runner.
+   - Resolved the `DATABASE_NAME` vs `DB_NAME` configuration discrepancy: `DATABASE_NAME` takes primary precedence, falling back to `DB_NAME` for backward compatibility, with a safe default of `"student_db"`.
+   - Created root [`.env.example`](file:///c:/Users/ADIVEPPA%20D%20MAMADAPUR/Downloads/student-management-system/.env.example) containing sanitized placeholders and zero actual secrets or credentials.
+
+3. **Explicit Dependency Manifest (`requirements.txt`)**:
+   - Created a verified, tested [requirements.txt](file:///c:/Users/ADIVEPPA%20D%20MAMADAPUR/Downloads/student-management-system/requirements.txt) manifest recording compatible versions for runtime dependencies and clearly identifying testing dependencies (`pytest`, `httpx`).
+
+4. **Configurable and Safe CORS Handling**:
+   - Updated `app/main.py` to parse `CORS_ORIGINS` dynamically from environment variables.
+   - Configured safe explicit local-development origins by default.
+   - Enforced modern browser security standards: if wildcard `*` is specified in origins, `allow_credentials` is strictly forced to `False`.
+
+5. **ML Startup Diagnostics & Health Integrity**:
+   - Replaced silent startup exception suppression with structured logging via `uvicorn.error`.
+   - Preserved fault-tolerant server startup when model artifacts are absent.
+   - Verified that `/api/ai/health` accurately returns `HTTP 503` with operational status when artifacts are unreadable, without leaking filesystem paths, credentials, or internal stack traces.
 
 ---
 
@@ -570,7 +682,7 @@ pytest -v
 
 **Actual Test Output**:
 ```text
-======================= 96 passed, 7 warnings in 4.57s =======================
+====================== 113 passed, 8 warnings in 5.19s =======================
 ```
-* **96 tests passed** across student CRUD operations, ML model pipelines, AI routing, frontend integration, college data preparation, secure dataset import/audit, Phase 8 dataset analysis and model readiness, and Phase 9 security, data integrity, and hardening regression tests.
+* **113 tests passed** across student CRUD operations, ML model pipelines, AI routing, frontend integration, college data preparation, secure dataset import/audit, Phase 8 dataset analysis and model readiness, Phase 9 security, data integrity, and hardening regression tests, and Phase 10.2 configuration and deployment remediation tests.
 * **0 failures**, **0 errors**.
