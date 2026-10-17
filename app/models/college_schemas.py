@@ -246,3 +246,120 @@ class CollegeDatasetAuditResponse(BaseModel):
         description="Guarantee of student privacy and data protection",
     )
 
+
+# =========================================================================
+# Phase 8: College Dataset Analysis & Model Readiness Schemas
+# =========================================================================
+
+class ReadinessCheckDetail(BaseModel):
+    """Detailed result of an individual ML readiness validation check."""
+    check_name: str = Field(..., description="Name of the specific readiness criteria evaluated")
+    passed: bool = Field(..., description="Whether this readiness criterion was satisfied")
+    severity: Literal["BLOCKER", "WARNING", "INFO"] = Field(
+        ..., description="Failure severity: BLOCKER prevents readiness; WARNING requires caution; INFO is advisory"
+    )
+    details: str = Field(..., description="Descriptive explanation of the check outcome and observed metrics")
+    metrics: Dict[str, Any] = Field(
+        default_factory=dict, description="Underlying quantitative metrics evaluated during the check"
+    )
+
+
+class DatasetReadinessAssessment(BaseModel):
+    """Comprehensive readiness assessment determining suitability for prospective ML experimentation."""
+    status: Literal["TRAINING_BLOCKED", "READY_FOR_REVIEW"] = Field(
+        ..., description="Overall dataset readiness status for ML experiments"
+    )
+    is_ready_for_review: bool = Field(
+        ..., description="Whether the dataset is deemed ready for experimental review and evaluation split design"
+    )
+    is_ready_for_training: bool = Field(
+        default=False,
+        description="Always False until institutional evaluation design and human sign-off are completed"
+    )
+    defensible_split_possible: bool = Field(
+        ..., description="Whether stratified evaluation split or k-fold cross-validation is statistically feasible"
+    )
+    readiness_blockers: List[str] = Field(
+        default_factory=list, description="List of unmet criteria blocking prospective training"
+    )
+    warnings: List[str] = Field(
+        default_factory=list, description="Advisory quality alerts that do not strictly block experimentation"
+    )
+    checks: Dict[str, ReadinessCheckDetail] = Field(
+        default_factory=dict, description="Individual evaluations for each of the 7 explicit readiness criteria"
+    )
+    recommendations: List[str] = Field(
+        default_factory=list, description="Actionable recommendations for data curation and protocol design"
+    )
+
+
+class NumericSummaryStatistics(BaseModel):
+    """Summary statistics for a continuous or integer academic feature."""
+    count: int = Field(..., description="Count of non-null observations for this feature")
+    min: Optional[float] = Field(None, description="Minimum observed value")
+    max: Optional[float] = Field(None, description="Maximum observed value")
+    mean: Optional[float] = Field(None, description="Mean (average) observed value")
+    median: Optional[float] = Field(None, description="Median (50th percentile) observed value")
+    std: Optional[float] = Field(None, description="Sample standard deviation")
+
+
+class FieldMissingSummary(BaseModel):
+    """Missing value counts and percentages for an observation attribute."""
+    missing_count: int = Field(..., description="Number of missing or empty observations")
+    missing_pct: float = Field(..., description="Percentage of records with missing value (0.0 to 100.0%)")
+    present_count: int = Field(..., description="Number of records with valid value present")
+
+
+class CollegeDatasetAnalysisResponse(BaseModel):
+    """Comprehensive dataset analysis and prospective ML readiness report for Phase 8."""
+    dataset_name: str = Field(..., description="Name or identifier of the uploaded dataset")
+    total_records: int = Field(..., description="Total rows parsed from CSV input")
+    valid_records_count: int = Field(..., description="Count of observations conforming strictly to schema")
+    invalid_records_count: int = Field(..., description="Count of invalid or rejected observation rows")
+    validation_error_rate: float = Field(..., description="Ratio of invalid rows to total rows (0.0 to 1.0)")
+    validation_failures_sample: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Sample of validation failure explanations with row indices (zero student PII)",
+    )
+    student_metrics: Dict[str, Any] = Field(
+        ..., description="Counts of unique pseudonymous students and observations per student ratio"
+    )
+    duplicate_observations_count: int = Field(
+        ..., description="Count of duplicate student-semester observation instances"
+    )
+    duplicate_details: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Details of detected duplicate student-semester keys"
+    )
+    missing_values_summary: Dict[str, FieldMissingSummary] = Field(
+        default_factory=dict, description="Missing-value counts and percentages per field"
+    )
+    numeric_summary_statistics: Dict[str, NumericSummaryStatistics] = Field(
+        default_factory=dict, description="Summary statistics (min, max, mean, median, std) for numeric variables"
+    )
+    categorical_distributions: Dict[str, Dict[str, int]] = Field(
+        default_factory=dict, description="Distributions across branch, academic_year, semester, and program"
+    )
+    outcome_and_class_balance: Dict[str, Any] = Field(
+        ..., description="Verified outcome distributions, labeling rate, and binary risk class balance"
+    )
+    target_leakage_warnings: List[Dict[str, str]] = Field(
+        default_factory=list, description="Detected post-examination or future-information leakage features"
+    )
+    readiness_assessment: DatasetReadinessAssessment = Field(
+        ..., description="Explicit 7-point readiness checklist, status, blockers, and recommendations"
+    )
+    disclaimer: str = Field(
+        ..., description="Mandatory notice that this report is a data-quality audit, not an individual student prediction"
+    )
+    database_storage_action: str = Field(
+        default="NONE_INSPECTED_ONLY",
+        description="Confirmation of non-persistence (zero records written to MongoDB)",
+    )
+    training_action: str = Field(
+        default="NONE_COLLEGE_TRAINING_BLOCKED",
+        description="Confirmation that model training remains disabled",
+    )
+    privacy_guarantee: str = Field(
+        default="Evaluated pseudonymously in-memory. Zero records persisted to MongoDB. Zero student PII exposed.",
+        description="Guarantee of student privacy and ephemeral in-memory processing",
+    )

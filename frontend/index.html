@@ -567,6 +567,110 @@
             display: none;
         }
 
+        /* Phase 8 College Dataset Analysis Styles */
+        .status-badge.blocked {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-badge.ready {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-pill.pass { background: #d4edda; color: #155724; }
+        .badge-pill.fail { background: #f8d7da; color: #721c24; }
+        .badge-pill.info { background: #e2e8f0; color: #334155; }
+        .badge-pill.warn { background: #fff3cd; color: #856404; }
+
+        .file-drop-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+
+        .file-drop-area:hover {
+            border-color: var(--primary);
+            background: #f0f7ff;
+        }
+
+        .alert-card {
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            font-size: 13.5px;
+            border-left: 5px solid;
+        }
+
+        .alert-card.blocker {
+            background: #fff5f5;
+            border-color: var(--danger);
+            color: #742a2a;
+        }
+
+        .alert-card.warning {
+            background: #fffbeb;
+            border-color: var(--warning);
+            color: #92400e;
+        }
+
+        .alert-card.success {
+            background: #f0fff4;
+            border-color: var(--success);
+            color: #22543d;
+        }
+
+        .data-table-wrapper {
+            overflow-x: auto;
+            margin: 12px 0 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        .data-table th, .data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .data-table tr:hover {
+            background: #f8fafc;
+        }
+
         /* Footer */
         .app-footer {
             margin-top: auto;
@@ -617,6 +721,9 @@
             </button>
             <button id="tab-benchmark" class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('benchmark')">
                 🧪 Benchmark Predictor
+            </button>
+            <button id="tab-analysis" class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('analysis')">
+                🏫 College Dataset Analysis
             </button>
         </nav>
     </div>
@@ -1144,6 +1251,269 @@
         </div>
     </div>
 
+    <!-- ================================================================= -->
+    <!-- TAB 4: College Dataset Analysis & Model Readiness (Phase 8)        -->
+    <!-- ================================================================= -->
+    <div id="view-analysis" class="tab-content" role="tabpanel" aria-labelledby="tab-analysis">
+
+        <!-- Prominent Data Quality Assessment Disclaimer Notice -->
+        <div class="disclaimer-banner">
+            <span class="banner-icon">⚠️</span>
+            <div>
+                <strong>Data Quality & Model Readiness Assessment Notice:</strong> This audit performs structural data validation, missing-value profiling, numeric summarization, and statistical readiness checks on authorized de-identified engineering-college academic records. It is a <strong>data-quality assessment, not a prediction of individual students' performance</strong>. College model training remains strictly blocked pending authorized human review and experimental evaluation protocol design.
+            </div>
+        </div>
+
+        <!-- Upload & Evaluation Controls Card -->
+        <div class="card">
+            <div class="card-title">
+                <span>📁</span> Upload Authorized De-Identified College Dataset (CSV)
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                Select a CSV file containing de-identified semester observations (e.g. <code>student_ref</code>, <code>branch</code>, <code>academic_year</code>, <code>semester</code>, <code>attendance_pct</code>, <code>cie_marks_obtained</code>).
+                Processing executes strictly in memory (max 5 MB limit). Zero records are persisted to MongoDB. Zero student PII is accepted or logged.
+            </p>
+
+            <div class="preset-bar">
+                <span class="preset-title">Sample Cohorts for Immediate Testing:</span>
+                <button type="button" class="btn-preset" onclick="loadDemoCohort('valid')">
+                    🟢 Valid Cohort (120 rows)
+                </button>
+                <button type="button" class="btn-preset" onclick="loadDemoCohort('small')">
+                    🔴 Small Cohort (Blocked)
+                </button>
+                <button type="button" class="btn-preset" onclick="loadDemoCohort('leaky')">
+                    🟡 Leaky Cohort (Blocked)
+                </button>
+                <button type="button" class="btn-preset" onclick="clearAnalysisView()" style="margin-left: auto;">
+                    ⚪ Reset
+                </button>
+            </div>
+
+            <div class="file-drop-area" id="fileDropArea">
+                <input type="file" id="collegeCsvInput" accept=".csv" style="display: none;" onchange="handleFileSelected(event)">
+                <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+                <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Choose a College Academic Observations CSV</p>
+                <p id="selectedFileName" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">No file currently selected (max 5 MB)</p>
+                <button type="button" class="tab-btn" style="background: #e2e8f0; color: #1e293b; display: inline-flex;" onclick="document.getElementById('collegeCsvInput').click()">
+                    📂 Browse Local Computer...
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                <span style="font-size: 12px; color: var(--text-muted);">Ephemerally processed in memory. Zero database persistence.</span>
+                <button id="analyzeDatasetBtn" class="addBtn" type="button" onclick="submitCollegeAnalysis()" style="padding: 10px 22px; font-size: 14px; font-weight: 600; width: auto;" disabled>
+                    ⚡ Analyze Dataset & Assess Readiness
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="analysisLoading" style="display: none; text-align: center; padding: 28px; color: var(--text-muted);">
+                <div class="spinner" style="border-top-color: var(--primary); width: 28px; height: 28px;"></div>
+                <p style="margin-top: 10px; font-weight: 600;">Profiling dataset in-memory and evaluating 7-point readiness criteria...</p>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="analysisError" class="error-banner"></div>
+        </div>
+
+        <!-- Analysis & Readiness Results Container -->
+        <div id="analysisResults" style="display: none;">
+
+            <!-- Readiness Status Decision Card -->
+            <div class="card" id="readinessStatusCard">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">ML Training Readiness Status</div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                            <span id="readinessBadge" class="status-badge ready" style="font-size: 15px; padding: 6px 16px;">
+                                <span class="status-dot"></span> <span id="readinessStatusText">READY_FOR_REVIEW</span>
+                            </span>
+                            <span id="defensibleSplitBadge" class="badge-pill info">Stratified Split Feasible</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right; font-size: 12.5px; color: var(--text-muted);">
+                        Dataset: <strong id="analyzedDatasetName" style="color: var(--text-main);">dataset.csv</strong><br>
+                        Pipeline: <strong>FastAPI &bull; In-Memory &bull; Zero DB Persistence</strong>
+                    </div>
+                </div>
+
+                <div id="blockersBox" class="alert-card blocker" style="display: none;">
+                    <strong>🚫 Readiness Blockers Detected (Training Blocked):</strong>
+                    <ul id="blockersList" style="margin-top: 8px; margin-left: 18px; font-size: 13px; list-style-type: disc;"></ul>
+                </div>
+
+                <div id="warningsBox" class="alert-card warning" style="display: none;">
+                    <strong>⚠️ Advisory Data Warnings:</strong>
+                    <ul id="warningsList" style="margin-top: 8px; margin-left: 18px; font-size: 13px; list-style-type: disc;"></ul>
+                </div>
+
+                <div id="leakageAlertBox" class="alert-card blocker" style="display: none;">
+                    <strong>🚨 Target Leakage Features Flagged:</strong>
+                    <div id="leakageDetails" style="margin-top: 6px; font-size: 13px;"></div>
+                </div>
+            </div>
+
+            <!-- Key Metrics Overview Grid -->
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <div class="metric-label">Total Records</div>
+                    <div class="metric-value" id="resTotalRecords">--</div>
+                    <div class="metric-subtitle">Parsed CSV rows</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Valid Observations</div>
+                    <div class="metric-value" id="resValidRecords" style="color: var(--success);">--</div>
+                    <div class="metric-subtitle" id="resErrorRate">0.0% error rate</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Unique Students</div>
+                    <div class="metric-value" id="resUniqueStudents">--</div>
+                    <div class="metric-subtitle" id="resObsPerStudent">1.0 obs/student</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Verified Labeled</div>
+                    <div class="metric-value" id="resLabeledRecords">--</div>
+                    <div class="metric-subtitle" id="resLabelingRate">100% labeling rate</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">At-Risk Minority</div>
+                    <div class="metric-value" id="resAtRiskCount" style="color: #c82333;">--</div>
+                    <div class="metric-subtitle" id="resAtRiskRatio">Minority cases</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Duplicate Clusters</div>
+                    <div class="metric-value" id="resDuplicatesCount">0</div>
+                    <div class="metric-subtitle">Student-semester keys</div>
+                </div>
+            </div>
+
+            <!-- 7-Point ML Readiness Checklist Table -->
+            <div class="card">
+                <div class="card-title">
+                    <span>✅</span> 7-Point ML Experimental Readiness Checklist
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" aria-label="7-Point ML Readiness Checklist">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Readiness Criterion</th>
+                                <th style="width: 12%;">Status</th>
+                                <th style="width: 12%;">Severity</th>
+                                <th>Evaluation Details & Observed Metrics</th>
+                            </tr>
+                        </thead>
+                        <tbody id="readinessChecklistBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Academic Cohort & Class Balance Breakdown -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-title">
+                        <span>🏛️</span> Academic Cohort Distributions
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <strong style="font-size: 13px; color: #334155;">Engineering Branch Distribution:</strong>
+                        <div id="branchDistBadges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <strong style="font-size: 13px; color: #334155;">Academic Year Distribution:</strong>
+                        <div id="yearDistBadges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+                    </div>
+                    <div>
+                        <strong style="font-size: 13px; color: #334155;">Semester Distribution:</strong>
+                        <div id="semesterDistBadges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-title">
+                        <span>⚖️</span> Verified Outcomes & Class Balance
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                        <span>Passing: <strong id="lblPassingCount">--</strong></span>
+                        <span>Imbalance Ratio: <strong id="lblImbalanceRatio">--</strong></span>
+                        <span>At-Risk: <strong id="lblRiskCount" style="color: var(--danger);">--</strong></span>
+                    </div>
+                    <div class="progress-track" style="margin: 8px 0 14px;">
+                        <div id="classBalanceBar" class="progress-bar high-risk" style="width: 30%;"></div>
+                    </div>
+                    <div>
+                        <strong style="font-size: 13px; color: #334155;">Official Outcome Breakdown:</strong>
+                        <div id="outcomeBreakdownBadges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
+                        Auditing Authorities: <span id="outcomeAuthorities">OFFICIAL_EXAM_CELL</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Numeric Summary Statistics Table -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📐</span> Numeric Academic Features Summary Statistics
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" aria-label="Numeric Feature Summary Statistics">
+                        <thead>
+                            <tr>
+                                <th>Feature Name</th>
+                                <th>Count</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th>Mean</th>
+                                <th>Median</th>
+                                <th>Std Dev</th>
+                            </tr>
+                        </thead>
+                        <tbody id="numericStatsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Missing Values Summary Table -->
+            <div class="card">
+                <div class="card-title">
+                    <span>🔍</span> Missing Values & Feature Completeness
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" aria-label="Missing Values by Feature">
+                        <thead>
+                            <tr>
+                                <th>Field / Feature</th>
+                                <th>Present Rows</th>
+                                <th>Missing Rows</th>
+                                <th>Missing %</th>
+                                <th>Completeness Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="missingValuesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendations & Privacy Card -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📋</span> ML Protocol Recommendations & Privacy Guarantee
+                </div>
+                <div>
+                    <strong style="font-size: 13.5px; color: #1e293b;">Actionable Recommendations:</strong>
+                    <ul id="recommendationsList" style="margin-top: 8px; margin-left: 18px; font-size: 13px; list-style-type: disc;"></ul>
+                </div>
+                <div style="background: rgba(0,0,0,0.03); border-radius: 6px; padding: 12px; margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+                    <p style="margin-bottom: 4px;"><strong>🔒 Privacy Guarantee:</strong> <span id="privacyGuaranteeText">Evaluated pseudonymously in-memory. Zero records persisted to MongoDB. Zero student PII exposed.</span></p>
+                    <p style="margin-bottom: 4px;"><strong>🚫 Model Training Action:</strong> <code>NONE_COLLEGE_TRAINING_BLOCKED</code> &mdash; Real-world training remains strictly disabled until authorized institutional review and experimental evaluation protocol sign-off.</p>
+                    <p><strong>💾 Database Storage Action:</strong> <code>NONE_INSPECTED_ONLY</code> &mdash; Original 6 student MongoDB records remain completely untouched.</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
 </main>
 
 <footer class="app-footer">
@@ -1159,10 +1529,11 @@ const API = `${API_BASE}/students`;
 const AI_HEALTH_API = `${API_BASE}/api/ai/health`;
 const AI_METRICS_API = `${API_BASE}/api/ai/model-metrics`;
 const AI_PREDICT_API = `${API_BASE}/api/ai/benchmark-predict`;
+const AI_ANALYZE_API = `${API_BASE}/api/ai/college/analyze-dataset`;
 
 // Navigation Tab Management
 function switchTab(tabName) {
-    const tabs = ["students", "dashboard", "benchmark"];
+    const tabs = ["students", "dashboard", "benchmark", "analysis"];
     tabs.forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         const view = document.getElementById(`view-${t}`);
@@ -1189,7 +1560,7 @@ function switchTab(tabName) {
 // Initial Tab Routing from URL Hash
 window.addEventListener("DOMContentLoaded", () => {
     const hash = window.location.hash.replace("#", "");
-    if (["students", "dashboard", "benchmark"].includes(hash)) {
+    if (["students", "dashboard", "benchmark", "analysis"].includes(hash)) {
         switchTab(hash);
     }
 });
@@ -1621,6 +1992,342 @@ async function submitBenchmarkPrediction(e) {
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
+    }
+}
+
+
+// =========================================================================
+// PART 4: College Dataset Analysis & Model Readiness (Phase 8)
+// =========================================================================
+
+let selectedCollegeFile = null;
+
+function handleFileSelected(event) {
+    const file = event.target.files[0];
+    if (file) {
+        setCollegeFile(file);
+    }
+}
+
+function setCollegeFile(file) {
+    selectedCollegeFile = file;
+    const nameEl = document.getElementById("selectedFileName");
+    nameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    nameEl.style.color = "var(--primary)";
+    document.getElementById("analyzeDatasetBtn").disabled = false;
+    document.getElementById("analysisError").style.display = "none";
+}
+
+function clearAnalysisView() {
+    selectedCollegeFile = null;
+    const input = document.getElementById("collegeCsvInput");
+    if (input) input.value = "";
+    document.getElementById("selectedFileName").textContent = "No file currently selected (max 5 MB)";
+    document.getElementById("selectedFileName").style.color = "var(--text-muted)";
+    document.getElementById("analyzeDatasetBtn").disabled = true;
+    document.getElementById("analysisError").style.display = "none";
+    document.getElementById("analysisResults").style.display = "none";
+}
+
+function loadDemoCohort(type) {
+    let csvText = "";
+    let filename = "";
+
+    if (type === 'valid') {
+        filename = "eligible_engineering_cohort_2024.csv";
+        const lines = [
+            "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,cie_max_marks,previous_sgpa,cumulative_cgpa,active_backlogs,verified_outcome,is_at_risk_label,outcome_source"
+        ];
+        // 80 Passing students across CSE, ISE, ECE
+        for (let i = 1; i <= 80; i++) {
+            const b = i % 3 === 0 ? "CSE" : (i % 3 === 1 ? "ISE" : "ECE");
+            const pad = String(i).padStart(3, '0');
+            lines.push(`ANON_ENG_${pad},${b},2,4,86.5,41.0,50.0,8.2,8.1,0,PASS,false,OFFICIAL_EXAM_CELL`);
+        }
+        // 40 At-risk students
+        for (let i = 81; i <= 120; i++) {
+            const b = i % 2 === 0 ? "MECH" : "ECE";
+            const pad = String(i).padStart(3, '0');
+            lines.push(`ANON_ENG_${pad},${b},2,4,61.0,17.5,50.0,5.2,5.5,3,FAIL_OR_DETAINED,true,OFFICIAL_EXAM_CELL`);
+        }
+        csvText = lines.join("\n");
+    } else if (type === 'small') {
+        filename = "small_sample_cohort.csv";
+        csvText = [
+            "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,cie_max_marks",
+            "ANON_001,CSE,1,1,85.0,40.0,50.0",
+            "ANON_002,ISE,1,2,78.0,35.0,50.0",
+            "ANON_003,ECE,2,3,92.0,46.0,50.0",
+            "ANON_004,MECH,2,3,60.0,22.0,50.0"
+        ].join("\n");
+    } else if (type === 'leaky') {
+        filename = "post_exam_leaky_cohort.csv";
+        csvText = [
+            "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,see_marks,promotion_status",
+            "ANON_LEAK_01,CSE,2,3,80.0,38.0,65.0,PROMOTED",
+            "ANON_LEAK_02,ECE,2,3,65.0,20.0,32.0,DETAINED",
+            "ANON_LEAK_03,ISE,2,3,88.0,44.0,78.0,PROMOTED"
+        ].join("\n");
+    }
+
+    const file = new File([csvText], filename, { type: "text/csv" });
+    setCollegeFile(file);
+    submitCollegeAnalysis();
+}
+
+async function submitCollegeAnalysis() {
+    if (!selectedCollegeFile) return;
+
+    const analyzeBtn = document.getElementById("analyzeDatasetBtn");
+    const loading = document.getElementById("analysisLoading");
+    const errorBox = document.getElementById("analysisError");
+    const resultsBox = document.getElementById("analysisResults");
+
+    analyzeBtn.disabled = true;
+    const originalText = analyzeBtn.innerHTML;
+    analyzeBtn.innerHTML = `<span class="spinner"></span> Profiling Dataset...`;
+    loading.style.display = "block";
+    errorBox.style.display = "none";
+    resultsBox.style.display = "none";
+
+    try {
+        const formData = new FormData();
+        formData.append("file", selectedCollegeFile);
+
+        const response = await fetch(AI_ANALYZE_API, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            let errorMsg = errData.detail || "Analysis request failed";
+            if (response.status === 413) {
+                errorMsg = `File Size Exceeded (HTTP 413): ${errData.detail || 'Maximum allowable size is 5 MB.'}`;
+            } else if (response.status === 422) {
+                errorMsg = `Header Schema Error (HTTP 422): ${errData.detail || 'Missing required column headers.'}`;
+            } else if (response.status === 400) {
+                errorMsg = `Invalid File Format (HTTP 400): ${errData.detail || 'Could not parse CSV content.'}`;
+            }
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        renderAnalysisReport(data);
+
+        loading.style.display = "none";
+        resultsBox.style.display = "block";
+        resultsBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+        loading.style.display = "none";
+        errorBox.innerHTML = `<strong>Analysis Failed:</strong> ${err.message}`;
+        errorBox.style.display = "block";
+        resultsBox.style.display = "none";
+    } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = originalText;
+    }
+}
+
+function renderAnalysisReport(data) {
+    const readiness = data.readiness_assessment || {};
+    const status = readiness.status || "TRAINING_BLOCKED";
+    const isReady = readiness.is_ready_for_review;
+
+    // 1. Overall Status Card
+    const badge = document.getElementById("readinessBadge");
+    const statusText = document.getElementById("readinessStatusText");
+    statusText.textContent = status;
+    badge.className = `status-badge ${isReady ? 'ready' : 'blocked'}`;
+
+    const splitBadge = document.getElementById("defensibleSplitBadge");
+    if (readiness.defensible_split_possible) {
+        splitBadge.className = "badge-pill pass";
+        splitBadge.textContent = "Defensible Split Viable";
+    } else {
+        splitBadge.className = "badge-pill fail";
+        splitBadge.textContent = "Split Not Feasible";
+    }
+
+    document.getElementById("analyzedDatasetName").textContent = data.dataset_name || "dataset.csv";
+
+    // 2. Blockers and Warnings
+    const blockersBox = document.getElementById("blockersBox");
+    const blockersList = document.getElementById("blockersList");
+    blockersList.innerHTML = "";
+    if (readiness.readiness_blockers && readiness.readiness_blockers.length > 0) {
+        readiness.readiness_blockers.forEach(b => {
+            const li = document.createElement("li");
+            li.textContent = b;
+            blockersList.appendChild(li);
+        });
+        blockersBox.style.display = "block";
+    } else {
+        blockersBox.style.display = "none";
+    }
+
+    const warningsBox = document.getElementById("warningsBox");
+    const warningsList = document.getElementById("warningsList");
+    warningsList.innerHTML = "";
+    if (readiness.warnings && readiness.warnings.length > 0) {
+        readiness.warnings.forEach(w => {
+            const li = document.createElement("li");
+            li.textContent = w;
+            warningsList.appendChild(li);
+        });
+        warningsBox.style.display = "block";
+    } else {
+        warningsBox.style.display = "none";
+    }
+
+    const leakageBox = document.getElementById("leakageAlertBox");
+    const leakageDetails = document.getElementById("leakageDetails");
+    if (data.target_leakage_warnings && data.target_leakage_warnings.length > 0) {
+        leakageDetails.innerHTML = data.target_leakage_warnings.map(l =>
+            `<div>&bull; <code>${l.feature_name}</code>: ${l.explanation} (Mitigation: ${l.mitigation})</div>`
+        ).join("");
+        leakageBox.style.display = "block";
+    } else {
+        leakageBox.style.display = "none";
+    }
+
+    // 3. Key Metrics Grid
+    document.getElementById("resTotalRecords").textContent = data.total_records || 0;
+    document.getElementById("resValidRecords").textContent = data.valid_records_count || 0;
+    const errPct = (data.validation_error_rate * 100).toFixed(1);
+    document.getElementById("resErrorRate").textContent = `${errPct}% error rate (${data.invalid_records_count || 0} invalid)`;
+
+    const studentMetrics = data.student_metrics || {};
+    document.getElementById("resUniqueStudents").textContent = studentMetrics.unique_pseudonymous_students || 0;
+    document.getElementById("resObsPerStudent").textContent = `${studentMetrics.observations_per_student_avg || 0} obs/student`;
+
+    const outcomeBalance = data.outcome_and_class_balance || {};
+    document.getElementById("resLabeledRecords").textContent = outcomeBalance.labeled_records_count || 0;
+    const labelRatePct = (outcomeBalance.labeling_rate * 100).toFixed(1);
+    document.getElementById("resLabelingRate").textContent = `${labelRatePct}% labeling rate`;
+
+    document.getElementById("resAtRiskCount").textContent = outcomeBalance.at_risk_count || 0;
+    const riskRatioPct = (outcomeBalance.at_risk_ratio * 100).toFixed(1);
+    document.getElementById("resAtRiskRatio").textContent = `${riskRatioPct}% at-risk ratio`;
+
+    document.getElementById("resDuplicatesCount").textContent = data.duplicate_observations_count || 0;
+
+    // 4. 7-Point ML Readiness Checklist Table
+    const checklistBody = document.getElementById("readinessChecklistBody");
+    checklistBody.innerHTML = "";
+    const checks = readiness.checks || {};
+    for (const [key, check] of Object.entries(checks)) {
+        const tr = document.createElement("tr");
+        const statusClass = check.passed ? "badge-pill pass" : (check.severity === "BLOCKER" ? "badge-pill fail" : "badge-pill warn");
+        const statusText = check.passed ? "PASS" : "FAIL";
+        tr.innerHTML = `
+            <td><strong>${check.check_name}</strong></td>
+            <td><span class="${statusClass}">${statusText}</span></td>
+            <td><span class="badge-pill ${check.severity === 'BLOCKER' ? 'fail' : 'info'}">${check.severity}</span></td>
+            <td style="font-size: 12.5px; color: #334155;">${check.details}</td>
+        `;
+        checklistBody.appendChild(tr);
+    }
+
+    // 5. Cohort Distributions Badges
+    const branchBox = document.getElementById("branchDistBadges");
+    branchBox.innerHTML = "";
+    const branchDist = (data.categorical_distributions && data.categorical_distributions.branch_distribution) || {};
+    for (const [branch, count] of Object.entries(branchDist)) {
+        branchBox.innerHTML += `<span class="badge-pill info">${branch}: ${count}</span>`;
+    }
+    if (Object.keys(branchDist).length === 0) branchBox.innerHTML = "<span style='font-size: 12px; color: var(--text-muted);'>No valid branches</span>";
+
+    const yearBox = document.getElementById("yearDistBadges");
+    yearBox.innerHTML = "";
+    const yearDist = (data.categorical_distributions && data.categorical_distributions.academic_year_distribution) || {};
+    for (const [yr, count] of Object.entries(yearDist)) {
+        yearBox.innerHTML += `<span class="badge-pill info">Year ${yr}: ${count}</span>`;
+    }
+
+    const semBox = document.getElementById("semesterDistBadges");
+    semBox.innerHTML = "";
+    const semDist = (data.categorical_distributions && data.categorical_distributions.semester_distribution) || {};
+    for (const [sem, count] of Object.entries(semDist)) {
+        semBox.innerHTML += `<span class="badge-pill info">Sem ${sem}: ${count}</span>`;
+    }
+
+    // 6. Outcomes & Class Balance Meter
+    document.getElementById("lblPassingCount").textContent = outcomeBalance.passing_count || 0;
+    document.getElementById("lblRiskCount").textContent = outcomeBalance.at_risk_count || 0;
+    document.getElementById("lblImbalanceRatio").textContent = outcomeBalance.imbalance_ratio || "N/A";
+
+    const balanceBar = document.getElementById("classBalanceBar");
+    const riskPct = outcomeBalance.at_risk_ratio ? (outcomeBalance.at_risk_ratio * 100).toFixed(1) : 0;
+    balanceBar.style.width = `${riskPct}%`;
+
+    const outcomeBox = document.getElementById("outcomeBreakdownBadges");
+    outcomeBox.innerHTML = "";
+    const breakdown = outcomeBalance.verified_outcome_breakdown || {};
+    for (const [outcome, count] of Object.entries(breakdown)) {
+        const cls = outcome === "PASS" ? "pass" : "fail";
+        outcomeBox.innerHTML += `<span class="badge-pill ${cls}">${outcome}: ${count}</span>`;
+    }
+    if (Object.keys(breakdown).length === 0) outcomeBox.innerHTML = "<span style='font-size: 12px; color: var(--text-muted);'>Unlabeled observations</span>";
+
+    const authorities = outcomeBalance.outcome_sources || [];
+    document.getElementById("outcomeAuthorities").textContent = authorities.length > 0 ? authorities.join(", ") : "None documented";
+
+    // 7. Numeric Summary Statistics Table
+    const numericBody = document.getElementById("numericStatsBody");
+    numericBody.innerHTML = "";
+    const numStats = data.numeric_summary_statistics || {};
+    for (const [feat, s] of Object.entries(numStats)) {
+        if (s.count === 0) continue;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><code>${feat}</code></td>
+            <td>${s.count}</td>
+            <td>${s.min !== null ? s.min : '--'}</td>
+            <td>${s.max !== null ? s.max : '--'}</td>
+            <td>${s.mean !== null ? s.mean : '--'}</td>
+            <td>${s.median !== null ? s.median : '--'}</td>
+            <td>${s.std !== null ? s.std : '--'}</td>
+        `;
+        numericBody.appendChild(tr);
+    }
+    if (numericBody.children.length === 0) {
+        numericBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No numeric features with observations.</td></tr>`;
+    }
+
+    // 8. Missing Values Summary Table
+    const missingBody = document.getElementById("missingValuesBody");
+    missingBody.innerHTML = "";
+    const missingSummary = data.missing_values_summary || {};
+    for (const [field, m] of Object.entries(missingSummary)) {
+        const tr = document.createElement("tr");
+        const isComplete = m.missing_count === 0;
+        const statusBadge = isComplete
+            ? `<span class="badge-pill pass">100% Complete</span>`
+            : (m.missing_pct > 30.0 ? `<span class="badge-pill fail">High Missing (${m.missing_pct}%)</span>` : `<span class="badge-pill warn">Partial (${m.missing_pct}%)</span>`);
+        tr.innerHTML = `
+            <td><code>${field}</code></td>
+            <td>${m.present_count}</td>
+            <td>${m.missing_count}</td>
+            <td>${m.missing_pct}%</td>
+            <td>${statusBadge}</td>
+        `;
+        missingBody.appendChild(tr);
+    }
+
+    // 9. Recommendations
+    const recList = document.getElementById("recommendationsList");
+    recList.innerHTML = "";
+    const recs = readiness.recommendations || [];
+    recs.forEach(r => {
+        const li = document.createElement("li");
+        li.textContent = r;
+        recList.appendChild(li);
+    });
+
+    // 10. Privacy Guarantee
+    if (data.privacy_guarantee) {
+        document.getElementById("privacyGuaranteeText").textContent = data.privacy_guarantee;
     }
 }
 </script>

@@ -63,11 +63,13 @@ This project demonstrates real-world concepts like **REST API development, datab
 - `DELETE /students/{usn}` — Delete student record by USN.
 - `DELETE /delete-student/{id}` — Legacy delete by MongoDB ObjectId (preserved for backward compatibility).
 
-### 🤖 AI Academic Risk & Early Warning Endpoints (Phase 4 & Phase 7)
+### 🤖 AI Academic Risk & Early Warning Endpoints (Phase 4, Phase 7 & Phase 8)
 - `GET /api/ai/health` — Check model readiness and artifact integrity.
 - `GET /api/ai/model-metrics` — Inspect genuine test-set evaluation metrics, confusion matrix, and limitations.
 - `POST /api/ai/benchmark-predict` — Execute benchmark risk prediction using validated UCI features.
 - `POST /api/ai/college/audit-dataset` — Securely upload, validate, and audit de-identified college CSV datasets (in-memory; zero database writes).
+- `POST /api/ai/college/analyze-dataset` — Comprehensive college dataset profiling, missing-value analysis, numeric summary statistics, cohort distributions, and 7-point ML readiness evaluation (`READY_FOR_REVIEW` vs `TRAINING_BLOCKED`). Ephemeral in-memory execution.
+
 
 #### Example: `POST /api/ai/benchmark-predict`
 
@@ -188,7 +190,7 @@ DATABASE_NAME=student_management
 ```
 
 ### 3️⃣ Run Automated Tests
-Execute the comprehensive 67-test suite (CRUD, ML pipelines, AI routes, frontend integration, college data preparation, and secure dataset import & audit):
+Execute the comprehensive 82-test suite (CRUD, ML pipelines, AI routes, frontend integration, college data preparation, secure dataset import & audit, and Phase 8 dataset analysis & model readiness):
 ```bash
 pytest -v
 ```
@@ -206,7 +208,7 @@ Once running:
 
 ---
 
-# 📖 How to Use the Frontend (Phase 5)
+# 📖 How to Use the Frontend (Phase 5 & Phase 8)
 
 The interface includes a tabbed navigation bar at the top:
 
@@ -229,6 +231,18 @@ The interface includes a tabbed navigation bar at the top:
 * **Run Prediction**: Click **⚡ Predict Academic Risk (UCI Model)**.
 * **Inspect Output**: View Risk Status (`At-Risk` vs `Normal`), Risk Probability meter, Confidence score, and Risk Tier (`High`, `Medium`, `Low`).
 * **Domain Disclaimers**: Review the official dataset disclaimer directly in the response box.
+
+### 4. 🏫 College Dataset Analysis Tab (Phase 8)
+* **Select CSV**: Click **📂 Browse Local Computer...** to upload an authorized de-identified CSV dataset (enforces 5 MB limit).
+* **Quick Sample Cohorts**: Click **🟢 Valid Cohort (120 rows)**, **🔴 Small Cohort (Blocked)**, or **🟡 Leaky Cohort (Blocked)** to immediately generate and evaluate synthetic cohorts.
+* **Inspect Readiness Decision**: View status badge (`READY_FOR_REVIEW` or `TRAINING_BLOCKED`) and defensible split viability.
+* **Blockers & Warnings**: Review explicit lists of unmet criteria and advisory data skew warnings.
+* **7-Point Checklist**: Inspect status (PASS/FAIL) and quantitative metrics across all seven readiness criteria.
+* **Cohorts & Distributions**: View breakdown badges for departments (CSE, ISE, ECE, MECH), study years, and semesters.
+* **Numeric Summaries**: Inspect count, min, max, mean, median, and std dev across continuous academic features.
+* **Missing Values**: Review completeness percentages per column.
+* **Data Quality Disclaimer**: Prominently notes that the report is a data-quality audit, not an individual student prediction.
+
 
 ---
 
@@ -389,12 +403,149 @@ Phase 7 implements a secure, leak-free import and audit pipeline for authorized 
 
 ---
 
-# ⚠️ Remaining Limitations
+# 🔬 College Dataset Analysis & Model Readiness (Phase 8)
 
-1. **Secondary-School Dataset Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
-2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
-3. **No Training on Synthetic Data**: Phase 6 & Phase 7 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
+Phase 8 extends the college data framework with an in-depth data quality audit, missing-value profiling, numeric summarization, cohort distribution analysis, and an explicit 7-point Machine Learning readiness assessment.
+
+### 🌐 Analysis Endpoint: `POST /api/ai/college/analyze-dataset`
+- **Method**: `POST`
+- **Content-Type**: `multipart/form-data` (`file=@dataset.csv`)
+- **Status Codes**:
+  - `200 OK`: Dataset successfully parsed, profiled, and comprehensive readiness report returned.
+  - `400 Bad Request`: Non-CSV format, empty file, or unparseable CSV content.
+  - `413 Payload Too Large`: Uploaded file exceeds the 5 MB maximum file size limit.
+  - `422 Unprocessable Entity`: CSV is missing required academic columns.
+  - `500 Internal Server Error`: Unexpected server processing error.
+
+### 📊 Calculated Analysis Fields
+
+| Category | Field Name | Description |
+| :--- | :--- | :--- |
+| **Observation Counts** | `total_records`, `valid_records_count`, `invalid_records_count` | Total rows, valid rows conforming to schema, and rejected row counts. |
+| **Quality & Bounds** | `validation_error_rate`, `validation_failures_sample` | Failure ratio (0.0–1.0) and safe sample of error messages (row index + error explanation; zero PII). |
+| **Student Metrics** | `student_metrics` | Total observations, count of unique pseudonymous students (`student_ref`), and observations-per-student ratio. |
+| **Deduplication** | `duplicate_observations_count`, `duplicate_details` | Count and details of duplicate observations sharing composite key `(student_ref, academic_year, semester)`. |
+| **Missing Values** | `missing_values_summary` | Dictionary mapping every column to `missing_count`, `missing_pct`, and `present_count`. |
+| **Numeric Statistics** | `numeric_summary_statistics` | Quantitative summary for all numeric variables: `count`, `min`, `max`, `mean`, `median`, and `std` dev. |
+| **Cohort Distributions** | `categorical_distributions` | Distribution breakdowns across engineering branches, academic years, semesters, and degree programs. |
+| **Outcomes & Balance**| `outcome_and_class_balance` | Counts of passing vs at-risk observations, labeling rate, at-risk ratio, imbalance ratio string, and outcome authorities. |
+| **Target Leakage** | `target_leakage_warnings` | Flagged post-examination features (`see_marks`, `promotion_status`, `end_sem_marks`) with mitigation advice. |
+| **Readiness Assessment**| `readiness_assessment` | Explicit 7-point criteria checklist, status, blockers, warnings, and protocol recommendations. |
+
+### 🚦 7-Point ML Experimental Readiness Criteria
+
+| # | Readiness Check | Threshold / Evaluation Rule | Severity |
+| :-: | :--- | :--- | :---: |
+| **1** | **Data Quality & Schema Validity** | $\le 5.0\%$ validation failure rate across observations. | **BLOCKER** |
+| **2** | **Duplicates & Missing Values** | Zero duplicate student-semester records; zero missing values in mandatory columns. | **BLOCKER** |
+| **3** | **Ground-Truth Labels** | $\ge 80$ verified labels backed by documented examination authority (`outcome_source`). | **BLOCKER** |
+| **4** | **Sample Size & At-Risk Counts** | $\ge 100$ valid records total; $\ge 15$ verified at-risk positive cases. | **BLOCKER** |
+| **5** | **Class Imbalance & Defensible Split** | Minority class $\ge 15$ samples, ensuring stratified 5-fold cross-validation or holdout evaluation is statistically viable without degenerate folds. | **BLOCKER** |
+| **6** | **Target Leakage Prevention** | Zero post-hoc or end-semester examination features in the feature set. | **BLOCKER** |
+| **7** | **Population Representation** | Recognized engineering branches, valid study years (1–5) and semesters (1–10) on standard 10-point GPA scale. | **BLOCKER** |
+
+### 🚦 Readiness Statuses
+- **`READY_FOR_REVIEW`**: The dataset satisfies all automated data-quality and statistical readiness thresholds. It is deemed ready for **human faculty review and experimental evaluation protocol design**.
+  > [!IMPORTANT]
+  > `READY_FOR_REVIEW` does **NOT** authorize production deployment or automated model training. Human review and offline evaluation design are still mandatory.
+- **`TRAINING_BLOCKED`**: The dataset violates one or more readiness criteria. The response includes an explicit list of `readiness_blockers` and actionable `recommendations` for data curation.
+
+### 📋 Example Analysis Response (`200 OK`)
+```json
+{
+  "dataset_name": "authorized_engineering_cohort.csv",
+  "total_records": 120,
+  "valid_records_count": 120,
+  "invalid_records_count": 0,
+  "validation_error_rate": 0.0,
+  "validation_failures_sample": [],
+  "student_metrics": {
+    "total_valid_observations": 120,
+    "unique_pseudonymous_students": 120,
+    "observations_per_student_avg": 1.0,
+    "pseudonymity_status": "VERIFIED_NO_RAW_PII"
+  },
+  "duplicate_observations_count": 0,
+  "duplicate_details": [],
+  "missing_values_summary": {
+    "attendance_pct": { "missing_count": 0, "missing_pct": 0.0, "present_count": 120 },
+    "cie_marks_obtained": { "missing_count": 0, "missing_pct": 0.0, "present_count": 120 }
+  },
+  "numeric_summary_statistics": {
+    "attendance_pct": { "count": 120, "min": 61.0, "max": 86.5, "mean": 78.0, "median": 86.5, "std": 11.87 },
+    "cie_marks_obtained": { "count": 120, "min": 17.5, "max": 42.0, "mean": 33.17, "median": 41.0, "std": 11.23 }
+  },
+  "categorical_distributions": {
+    "branch_distribution": { "CSE": 27, "ISE": 27, "ECE": 46, "MECH": 20 },
+    "academic_year_distribution": { "2": 120 },
+    "semester_distribution": { "4": 120 },
+    "program_distribution": { "B.Tech": 120 }
+  },
+  "outcome_and_class_balance": {
+    "labeled_records_count": 120,
+    "unlabeled_records_count": 0,
+    "labeling_rate": 1.0,
+    "at_risk_count": 40,
+    "passing_count": 80,
+    "at_risk_ratio": 0.3333,
+    "passing_ratio": 0.6667,
+    "imbalance_ratio": "1:2.0",
+    "verified_outcome_breakdown": { "PASS": 80, "FAIL_OR_DETAINED": 40 },
+    "outcome_sources": ["OFFICIAL_EXAM_CELL"]
+  },
+  "target_leakage_warnings": [],
+  "readiness_assessment": {
+    "status": "READY_FOR_REVIEW",
+    "is_ready_for_review": true,
+    "is_ready_for_training": false,
+    "defensible_split_possible": true,
+    "readiness_blockers": [],
+    "warnings": [],
+    "checks": {
+      "data_quality_and_schema": { "check_name": "Data Quality and Schema Validity", "passed": true, "severity": "BLOCKER", "details": "Validation failure rate is 0.0%." },
+      "duplicates_and_missing_values": { "check_name": "Duplicate Records and Missing Values", "passed": true, "severity": "BLOCKER", "details": "Zero duplicates and zero missing mandatory fields." },
+      "ground_truth_labels_availability": { "check_name": "Availability of Verified Ground-Truth Labels", "passed": true, "severity": "BLOCKER", "details": "120 verified labels available." },
+      "sample_size_and_at_risk_counts": { "check_name": "Sample Size and At-Risk Example Counts", "passed": true, "severity": "BLOCKER", "details": "Cohort size is sufficient (120 valid, 40 at-risk)." },
+      "class_imbalance_and_defensible_split": { "check_name": "Class Imbalance and Defensible Evaluation Split", "passed": true, "severity": "BLOCKER", "details": "Defensible evaluation split is statistically viable (minority has 40 samples)." },
+      "potential_target_leakage": { "check_name": "Potential Target Leakage Inspection", "passed": true, "severity": "BLOCKER", "details": "Zero target leakage detected." },
+      "population_representation": { "check_name": "Engineering College Population Representation", "passed": true, "severity": "BLOCKER", "details": "Cohort represents 4 branches." }
+    },
+    "recommendations": [
+      "Submit the readiness report for institutional academic advisory and examination cell sign-off.",
+      "Design a leak-free evaluation protocol (e.g., student-stratified 5-fold cross-validation or temporal semester-holdout).",
+      "Establish benchmark performance with interpretable linear models before proceeding to tree-based ensembles."
+    ]
+  },
+  "disclaimer": "DATA QUALITY AND READINESS ASSESSMENT DISCLAIMER: This report evaluates structural data quality, schema integrity, and statistical readiness for prospective machine learning experimentation. It is NOT an academic risk prediction or evaluation of individual students' performance. College model training remains blocked pending authorized institutional review and experimental evaluation protocol sign-off.",
+  "database_storage_action": "NONE_INSPECTED_ONLY",
+  "training_action": "NONE_COLLEGE_TRAINING_BLOCKED",
+  "privacy_guarantee": "Evaluated pseudonymously in-memory. Zero records persisted to MongoDB. Zero student PII exposed."
+}
+```
+
+---
+
+# ⚠️ Remaining Limitations & Privacy Guarantees
+
+1. **Secondary-School Benchmark Limitation**: The benchmark model was trained on Portuguese secondary-school mathematics students (Cortez & Silva, 2008). Its predictions are for comparative benchmarking and educational demonstration only and are **not** clinically validated for Indian engineering college students (VTU / AICTE).
+2. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain strictly separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection.
+3. **No Training on Synthetic Data**: Phase 6, Phase 7, and Phase 8 provide data preparation, schema validation, and readiness auditing only. College-specific model training remains blocked until an authorized, labeled institutional dataset is available.
 4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
-5. **Zero Persistence on Audit**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` performs ephemeral in-memory auditing. No records are written to MongoDB.
+5. **Zero Persistence on Audit / Analysis**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` or `POST /api/ai/college/analyze-dataset` executes entirely in memory. Zero records are written to MongoDB. The 6 original MongoDB student records remain completely untouched.
+6. **No Production Readiness Claims**: A status of `READY_FOR_REVIEW` indicates structural and statistical readiness for offline experimental evaluation; it does not constitute approval for production deployment. Institutional sign-off, ethical review, and leak-free validation protocol design are required.
 
+---
 
+# 🧪 Automated Test Verification
+
+All automated tests can be executed with:
+```bash
+pytest -v
+```
+
+**Actual Test Output**:
+```text
+======================= 82 passed, 6 warnings in 5.25s =======================
+```
+* **82 tests passed** across student CRUD operations, ML model pipelines, AI routing, frontend integration, college data preparation, secure dataset import/audit, and Phase 8 dataset analysis and model readiness.
+* **0 failures**, **0 errors**.

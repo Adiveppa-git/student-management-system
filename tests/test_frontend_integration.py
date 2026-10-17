@@ -136,3 +136,33 @@ def test_database_records_remain_unaltered_after_frontend_evaluations():
         assert "benchmark_prediction" not in record
         assert "risk_status" not in record
         assert "is_at_risk" not in record
+
+
+def test_college_dataset_analysis_tab_elements_present():
+    """Verify index.html contains all Phase 8 College Dataset Analysis elements and disclaimers."""
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+
+    # Tab navigation & view container
+    assert 'id="tab-analysis"' in content
+    assert 'id="view-analysis"' in content
+    assert "College Dataset Analysis" in content
+
+    # File input & trigger button
+    assert 'id="collegeCsvInput"' in content
+    assert 'id="analyzeDatasetBtn"' in content
+
+    # Results containers & tables
+    assert 'id="analysisResults"' in content
+    assert 'id="readinessBadge"' in content
+    assert 'id="readinessChecklistBody"' in content
+    assert 'id="numericStatsBody"' in content
+    assert 'id="missingValuesBody"' in content
+
+    # Data quality disclaimer
+    assert "data-quality assessment, not a prediction of individual students' performance" in content
+
+    # JavaScript helper functions
+    assert "handleFileSelected" in content
+    assert "loadDemoCohort" in content
+    assert "submitCollegeAnalysis" in content
+    assert "renderAnalysisReport" in content

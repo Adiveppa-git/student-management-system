@@ -15,8 +15,15 @@ from app.models.ai_schemas import (
     ModelMetricsResponse,
     UCIBenchmarkStudentInput,
 )
-from app.models.college_schemas import CollegeDatasetAuditResponse
-from app.ml.college_data_prep import MAX_CSV_FILE_SIZE_BYTES, parse_and_audit_college_csv
+from app.models.college_schemas import (
+    CollegeDatasetAnalysisResponse,
+    CollegeDatasetAuditResponse,
+)
+from app.ml.college_data_prep import (
+    MAX_CSV_FILE_SIZE_BYTES,
+    parse_and_analyze_college_csv,
+    parse_and_audit_college_csv,
+)
 from app.ml.predictor import (
     check_model_health,
     get_metadata,
@@ -215,3 +222,61 @@ async def audit_college_dataset(file: UploadFile = File(...)) -> Dict[str, Any]:
             detail="An error occurred while auditing the college dataset.",
         )
 
+
+@router.post(
+    "/college/analyze-dataset",
+    response_model=CollegeDatasetAnalysisResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Comprehensive dataset analysis and ML readiness evaluation (Phase 8)",
+    description=(
+        "Uploads a CSV file of de-identified engineering college academic observations. "
+        "Calculates missing-value counts/percentages, numeric summary statistics (min/max/mean/median/std), "
+        "cohort distributions, verified academic outcome breakdown, class imbalance, and duplicate counts. "
+        "Performs an explicit 7-point readiness assessment returning 'READY_FOR_REVIEW' or 'TRAINING_BLOCKED'. "
+        "Operates strictly in memory; zero database mutations, zero student PII exposed, and zero model training."
+    ),
+)
+async def analyze_college_dataset_endpoint(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Execute deep data quality profiling and ML experimental readiness evaluation."""
+    filename = file.filename or "dataset.csv"
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only .csv files are supported for college dataset analysis.",
+        )
+
+    # Enforce file size limit safely (5 MB + 1 KB buffer)
+    try:
+        content = await file.read(MAX_CSV_FILE_SIZE_BYTES + 1024)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error reading uploaded file content.",
+        )
+
+    if len(content) > MAX_CSV_FILE_SIZE_BYTES:
+        max_mb = MAX_CSV_FILE_SIZE_BYTES // (1024 * 1024)
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds maximum allowable limit of {max_mb} MB.",
+        )
+
+    try:
+        report = parse_and_analyze_college_csv(content, filename=filename)
+        return report
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "missing required column" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=err_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=err_msg,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while analyzing the college dataset.",
+        )
