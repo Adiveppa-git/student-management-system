@@ -9,7 +9,6 @@ Validates:
 6. Benchmark predictions do not mutate or pollute existing MongoDB student records.
 """
 
-import re
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
@@ -20,6 +19,8 @@ from app.database.connection import collection
 
 client = TestClient(app)
 FRONTEND_FILE = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+FRONTEND_DIR = FRONTEND_FILE.parent
+STUDENTS_FILE = FRONTEND_DIR / "students.html"
 
 # The 31 exact feature names required by UCIBenchmarkStudentInput
 REQUIRED_31_FEATURES = [
@@ -34,40 +35,92 @@ ORIGINAL_USNS = ["1DB24IS045", "1DB23IS001", "1DB25EC096", "1DB25CS009", "1DB23I
 
 
 def test_frontend_static_route_serves_html():
-    """Verify /frontend/ returns HTTP 200 with text/html content type."""
+    """Verify both frontend pages and their extracted assets are served."""
     response = client.get("/frontend/")
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
     assert "<!DOCTYPE html>" in response.text
 
+    students_response = client.get("/frontend/students.html")
+    assert students_response.status_code == 200
+    assert 'id="studentList"' in students_response.text
+
+    asset_paths = [
+        "/frontend/css/app.css",
+        "/frontend/js/api.js",
+        "/frontend/js/navigation.js",
+        "/frontend/js/student-registration.js",
+        "/frontend/js/students.js",
+        "/frontend/js/ai-dashboard.js",
+        "/frontend/js/benchmark-prediction.js",
+        "/frontend/js/college-dataset-analysis.js",
+    ]
+    for asset_path in asset_paths:
+        asset_response = client.get(asset_path)
+        assert asset_response.status_code == 200, asset_path
+
 
 def test_existing_student_crud_elements_preserved():
-    """Verify all original student management form inputs, buttons, and containers exist."""
+    """Verify registration stays on index and student operations live on students.html."""
     assert FRONTEND_FILE.exists()
-    content = FRONTEND_FILE.read_text(encoding="utf-8")
+    assert STUDENTS_FILE.exists()
+    registration_content = FRONTEND_FILE.read_text(encoding="utf-8")
+    students_content = STUDENTS_FILE.read_text(encoding="utf-8")
 
     # Form and inputs
-    assert 'id="studentForm"' in content
-    assert 'id="name"' in content
-    assert 'id="usn"' in content
-    assert 'id="branch"' in content
-    assert 'id="year"' in content
-    assert 'id="email"' in content
-    assert 'id="submitBtn"' in content
-    assert 'id="studentList"' in content
+    assert 'id="studentForm"' in registration_content
+    assert 'id="name"' in registration_content
+    assert 'id="usn"' in registration_content
+    assert 'id="branch"' in registration_content
+    assert 'id="year"' in registration_content
+    assert 'id="email"' in registration_content
+    assert 'id="submitBtn"' in registration_content
+    assert 'id="studentList"' not in registration_content
+    assert 'id="studentList"' in students_content
+    assert "<script>" not in registration_content
+    assert 'style="' not in registration_content
+    assert "onclick=" not in registration_content
+    assert "onchange=" not in registration_content
+    assert "onsubmit=" not in registration_content
 
     # CSS classes
-    assert 'class="addBtn"' in content or 'addBtn' in content
-    assert 'updateBtn' in content
-    assert 'editBtn' in content
-    assert 'deleteBtn' in content
-    assert 'viewBtn' in content
+    styles = (FRONTEND_DIR / "css" / "app.css").read_text(encoding="utf-8")
+    assert ".addBtn" in styles
+    assert ".updateBtn" in styles
+    assert ".editBtn" in styles
+    assert ".deleteBtn" in styles
+    assert ".viewBtn" in styles
 
     # JS functions
-    assert "loadStudents" in content
-    assert "editStudent" in content
-    assert "viewStudent" in content
-    assert "deleteStudent" in content
+    student_script = (FRONTEND_DIR / "js" / "students.js").read_text(encoding="utf-8")
+    registration_script = (FRONTEND_DIR / "js" / "student-registration.js").read_text(encoding="utf-8")
+    navigation_script = (FRONTEND_DIR / "js" / "navigation.js").read_text(encoding="utf-8")
+    assert "loadStudents" in student_script
+    assert "viewStudent" in student_script
+    assert "deleteStudent" in student_script
+    assert "index.html?usn=" in student_script
+    assert "loadStudents()" not in registration_script
+    assert "loadStudentForEdit" in registration_script
+    assert 'const tabs = ["dashboard", "benchmark", "analysis"]' in navigation_script
+    assert 'id="tab-students"' not in registration_content
+
+
+def test_student_update_encodes_usn_path_segment():
+    """Ensure PUT uses the same safe USN path encoding as the edit lookup."""
+    registration_script = (FRONTEND_DIR / "js" / "student-registration.js").read_text(encoding="utf-8")
+    assert '`${API}/${encodeURIComponent(editUSN)}`' in registration_script
+    assert 'API + "/" + editUSN' not in registration_script
+
+
+def test_college_analysis_uses_text_safe_report_rendering():
+    """Ensure CSV/report values and server errors are never interpolated into HTML."""
+    analysis_script = (FRONTEND_DIR / "js" / "college-dataset-analysis.js").read_text(encoding="utf-8")
+    assert ".innerHTML" not in analysis_script
+    assert "textContent = warning.feature_name" in analysis_script
+    assert "textContent = check.check_name" in analysis_script
+    assert "textContent = value ?? \"\"" in analysis_script
+    assert "textContent = ` ${err.message}`" not in analysis_script
+    assert "document.createTextNode(` ${err.message}`)" in analysis_script
 
 
 def test_all_31_benchmark_input_elements_present():
@@ -162,29 +215,32 @@ def test_college_dataset_analysis_tab_elements_present():
     assert "data-quality assessment, not a prediction of individual students' performance" in content
 
     # JavaScript helper functions
-    assert "handleFileSelected" in content
-    assert "loadDemoCohort" in content
-    assert "submitCollegeAnalysis" in content
-    assert "renderAnalysisReport" in content
+    analysis_script = (FRONTEND_DIR / "js" / "college-dataset-analysis.js").read_text(encoding="utf-8")
+    assert "handleFileSelected" in analysis_script
+    assert "loadDemoCohort" in analysis_script
+    assert "submitCollegeAnalysis" in analysis_script
+    assert "renderAnalysisReport" in analysis_script
 
 
 def test_phase_9_frontend_hardening_and_clarity():
     """Verify Phase 9 frontend hardening: demo vs real provenance banner, readiness note, and accessibility."""
     content = FRONTEND_FILE.read_text(encoding="utf-8")
+    analysis_script = (FRONTEND_DIR / "js" / "college-dataset-analysis.js").read_text(encoding="utf-8")
+    page_and_script = content + analysis_script
 
     # 1. Dataset Provenance elements (distinguishing demo from real institutional data)
     assert 'id="datasetProvenanceBanner"' in content
     assert 'id="provenanceIcon"' in content
     assert 'id="provenanceText"' in content
-    assert "Synthetic Demonstration Cohort" in content
-    assert "Uploaded Local Institutional Data" in content
-    assert "NOT actual institutional data" in content or "not actual institutional data" in content.lower()
+    assert "Synthetic Demonstration Cohort" in page_and_script
+    assert "Uploaded Local Institutional Data" in page_and_script
+    assert "NOT actual institutional data" in page_and_script or "not actual institutional data" in page_and_script.lower()
 
     # 2. Readiness status explanation note
     assert 'id="readinessExplanatoryNote"' in content
     assert 'id="readinessExplanationText"' in content
-    assert "does NOT prove institutional representativeness" in content or "does not prove institutional representativeness" in content.lower()
-    assert "production readiness" in content.lower() or "production model deployment readiness" in content.lower()
+    assert "does NOT prove institutional representativeness" in page_and_script or "does not prove institutional representativeness" in page_and_script.lower()
+    assert "production readiness" in page_and_script.lower() or "production model deployment readiness" in page_and_script.lower()
 
     # 3. Accessibility enhancements
     assert 'aria-label="Upload College Academic Observations CSV"' in content

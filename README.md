@@ -277,7 +277,7 @@ uvicorn app.main:app --reload
 ```
 
 Once running:
-* **Interactive Frontend UI**: Open [`http://127.0.0.1:8000/frontend/`](http://127.0.0.1:8000/frontend/) in your browser (or open `frontend/index.html` directly).
+* **Interactive Frontend UI**: Open [`http://127.0.0.1:8000/frontend/`](http://127.0.0.1:8000/frontend/) in your browser. The student list is available at [`http://127.0.0.1:8000/frontend/students.html`](http://127.0.0.1:8000/frontend/students.html).
 * **Interactive OpenAPI / Swagger Docs**: [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs)
 * **Backend API Base**: [`http://127.0.0.1:8000/`](http://127.0.0.1:8000/)
 
@@ -285,14 +285,14 @@ Once running:
 
 # 📖 How to Use the Frontend (Phase 5 & Phase 8)
 
-The interface includes a tabbed navigation bar at the top:
+The frontend separates student registration and student records into two pages. Use the navigation links at the top of either page to switch between them.
 
-### 1. 👨‍🎓 Student Management Tab
-* **Add Student**: Fill in Name, USN, Branch, Year, and Email and click **Add Student**.
-* **View Student**: Click **View** to inspect full academic record details (attendance, CGPA, backlogs).
-* **Edit Student**: Click **Edit** to populate fields and update student data.
-* **Delete Student**: Click **Delete** with confirmation prompt.
-* **View More / Show Less**: Easily toggle between initial view (top 3) and full student list.
+### 1. 👨‍🎓 Student Registration and Records
+* **Register**: Open the Student Registration page, fill in Name, USN, Branch, Year, and Email, then click **Add Student**.
+* **View Students**: Open the View Students page to see the first three records or choose **View More**.
+* **View Details**: Click **View** to inspect the student's record, including available attendance, CGPA, and backlog details.
+* **Edit**: Click **Edit** to open the registration form with the selected student's existing details. Submit the form to save the update.
+* **Delete**: Click **Delete** and confirm to remove the selected record.
 
 ### 2. 📊 AI Dashboard Tab
 * **Operational Health**: Displays real-time model status, algorithm name (`RandomForestClassifier`), and evaluated features count (`31`).

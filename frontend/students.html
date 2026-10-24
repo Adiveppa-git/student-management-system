@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students | Student Success & Early Warning System</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-inner">
+            <div>
+                <h1 class="brand-title">🎓 Student Success & Early Warning System</h1>
+                <p class="brand-subtitle">Student records</p>
+            </div>
+            <nav class="nav-tabs" aria-label="Student navigation">
+                <a class="tab-btn" href="index.html">📝 Student Registration</a>
+                <a class="tab-btn active" href="students.html" aria-current="page">👥 View Students</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-wrapper">
+        <section class="container" aria-labelledby="students-heading">
+            <h2 id="students-heading">Students List</h2>
+            <ul id="studentList" aria-live="polite"></ul>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>AI-Powered Student Success & Early Warning System | Built with FastAPI, Scikit-learn & MongoDB</p>
+    </footer>
+
+    <script src="js/api.js" defer></script>
+    <script src="js/students.js" defer></script>
+</body>
+</html>
