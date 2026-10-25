@@ -9,30 +9,43 @@ const DAILY_STUDYTIME_TO_WEEKLY = {
     more_than_4: 4
 };
 
+const BAD_HABITS_TO_UCI_CONSUMPTION = {
+    none: 1,
+    low: 2,
+    average: 3,
+    high: 4
+};
+
+// Schema-valid dataset categories used when these model features are not collected in the UI.
+const BENCHMARK_INTERNAL_DEFAULTS = {
+    school: "GP",
+    reason: "course",
+    guardian: "other",
+    nursery: "yes",
+    higher: "yes"
+};
+
 const PRESET_PROFILES = {
     struggling: {
-        subject: "Mathematics", maxMarks: 20,
-        school: "GP", sex: "M", age: 18, address: "U", famsize: "GT3", Pstatus: "T",
-        Medu: 1, Fedu: 1, Mjob: "other", Fjob: "other", reason: "course", guardian: "mother",
-        traveltime: 3, studytime: "less_than_1", failures: 3, schoolsup: "yes", famsup: "no", paid: "no",
-        activities: "no", nursery: "yes", higher: "no", internet: "no", romantic: "yes",
-        famrel: 2, freetime: 4, goout: 5, Dalc: 3, Walc: 4, health: 2, absences: 22, G1: 4, totalMarks: 20
+        sex: "M", age: 18, address: "U", famsize: "GT3", Pstatus: "T",
+        Medu: 1, Fedu: 1, Mjob: "other", Fjob: "other",
+        traveltime: 3, failures: 3, schoolsup: "yes", famsup: "no", paid: "no",
+        activities: "no", internet: "no", romantic: "yes",
+        famrel: 2, freetime: 4, goout: 5, badHabits: "average", health: 2, absences: 22
     },
     thriving: {
-        subject: "Physics", maxMarks: 20,
-        school: "GP", sex: "F", age: 16, address: "U", famsize: "LE3", Pstatus: "T",
-        Medu: 4, Fedu: 4, Mjob: "health", Fjob: "teacher", reason: "reputation", guardian: "mother",
-        traveltime: 1, studytime: "more_than_4", failures: 0, schoolsup: "no", famsup: "yes", paid: "yes",
-        activities: "yes", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
-        famrel: 5, freetime: 2, goout: 2, Dalc: 1, Walc: 1, health: 5, absences: 0, G1: 18, totalMarks: 20
+        sex: "F", age: 16, address: "U", famsize: "LE3", Pstatus: "T",
+        Medu: 4, Fedu: 4, Mjob: "health", Fjob: "teacher",
+        traveltime: 1, failures: 0, schoolsup: "no", famsup: "yes", paid: "yes",
+        activities: "yes", internet: "yes", romantic: "no",
+        famrel: 5, freetime: 2, goout: 2, badHabits: "none", health: 5, absences: 0
     },
     average: {
-        subject: "Chemistry", maxMarks: 20,
-        school: "GP", sex: "M", age: 17, address: "U", famsize: "GT3", Pstatus: "T",
-        Medu: 2, Fedu: 2, Mjob: "services", Fjob: "services", reason: "home", guardian: "father",
-        traveltime: 1, studytime: "1_to_2", failures: 0, schoolsup: "no", famsup: "yes", paid: "no",
-        activities: "yes", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
-        famrel: 4, freetime: 3, goout: 3, Dalc: 1, Walc: 2, health: 4, absences: 4, G1: 11, totalMarks: 20
+        sex: "M", age: 17, address: "U", famsize: "GT3", Pstatus: "T",
+        Medu: 2, Fedu: 2, Mjob: "services", Fjob: "services",
+        traveltime: 1, failures: 0, schoolsup: "no", famsup: "yes", paid: "no",
+        activities: "yes", internet: "yes", romantic: "no",
+        famrel: 4, freetime: 3, goout: 3, badHabits: "low", health: 4, absences: 4
     }
 };
 
@@ -40,7 +53,9 @@ function fillPreset(profileKey) {
     const data = PRESET_PROFILES[profileKey];
     if (!data) return;
 
+    const protectedProfileKeys = new Set(["subject", "maxMarks", "G1", "studytime"]);
     for (const [key, value] of Object.entries(data)) {
+        if (protectedProfileKeys.has(key)) continue;
         const el = document.getElementById(`bm_${key}`);
         if (el) el.value = value;
     }
@@ -53,7 +68,7 @@ function fillPreset(profileKey) {
 function clearBenchmarkForm() {
     document.getElementById("benchmarkForm").reset();
     const marksInput = document.getElementById("bm_G1");
-    marksInput.removeAttribute("max");
+    marksInput.max = "90";
     marksInput.setCustomValidity("");
     document.getElementById("predictError").textContent = "";
     document.getElementById("benchmarkResult").style.display = "none";
@@ -66,14 +81,15 @@ function updateMarksMaximum() {
     const maxMarks = maxMarksInput.value;
 
     if (maxMarks && maxMarksInput.validity.valid) {
-        marksInput.max = maxMarks;
+        const maxObtainedMarks = Math.min(Number(maxMarks), 90);
+        marksInput.max = String(maxObtainedMarks);
         marksInput.setCustomValidity(
-            marksInput.value && Number(marksInput.value) > Number(maxMarks)
-                ? `Obtained Marks cannot exceed Maximum Marks (${maxMarks}).`
+            marksInput.value && Number(marksInput.value) > maxObtainedMarks
+                ? `Obtained Marks cannot exceed ${maxObtainedMarks}.`
                 : ""
         );
     } else {
-        marksInput.removeAttribute("max");
+        marksInput.max = "90";
         marksInput.setCustomValidity("");
     }
 }
@@ -124,7 +140,7 @@ async function submitBenchmarkPrediction(e) {
 
     // Gather and parse all 31 inputs matching UCIBenchmarkStudentInput
     const payload = {
-        school: document.getElementById("bm_school").value,
+        school: BENCHMARK_INTERNAL_DEFAULTS.school,
         sex: document.getElementById("bm_sex").value,
         age: parseInt(document.getElementById("bm_age").value),
         address: document.getElementById("bm_address").value,
@@ -134,8 +150,8 @@ async function submitBenchmarkPrediction(e) {
         Fedu: parseInt(document.getElementById("bm_Fedu").value),
         Mjob: document.getElementById("bm_Mjob").value,
         Fjob: document.getElementById("bm_Fjob").value,
-        reason: document.getElementById("bm_reason").value,
-        guardian: document.getElementById("bm_guardian").value,
+        reason: BENCHMARK_INTERNAL_DEFAULTS.reason,
+        guardian: BENCHMARK_INTERNAL_DEFAULTS.guardian,
         traveltime: parseInt(document.getElementById("bm_traveltime").value),
         studytime: DAILY_STUDYTIME_TO_WEEKLY[document.getElementById("bm_studytime").value],
         failures: parseInt(document.getElementById("bm_failures").value),
@@ -143,15 +159,15 @@ async function submitBenchmarkPrediction(e) {
         famsup: document.getElementById("bm_famsup").value,
         paid: document.getElementById("bm_paid").value,
         activities: document.getElementById("bm_activities").value,
-        nursery: document.getElementById("bm_nursery").value,
-        higher: document.getElementById("bm_higher").value,
+        nursery: BENCHMARK_INTERNAL_DEFAULTS.nursery,
+        higher: BENCHMARK_INTERNAL_DEFAULTS.higher,
         internet: document.getElementById("bm_internet").value,
         romantic: document.getElementById("bm_romantic").value,
         famrel: parseInt(document.getElementById("bm_famrel").value),
         freetime: parseInt(document.getElementById("bm_freetime").value),
         goout: parseInt(document.getElementById("bm_goout").value),
-        Dalc: parseInt(document.getElementById("bm_Dalc").value),
-        Walc: parseInt(document.getElementById("bm_Walc").value),
+        Dalc: BAD_HABITS_TO_UCI_CONSUMPTION[document.getElementById("bm_badHabits").value],
+        Walc: BAD_HABITS_TO_UCI_CONSUMPTION[document.getElementById("bm_badHabits").value],
         health: parseInt(document.getElementById("bm_health").value),
         absences: parseInt(document.getElementById("bm_absences").value),
         G1: (marksObtained / maxMarks) * 20
