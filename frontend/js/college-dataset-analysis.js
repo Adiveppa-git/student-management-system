@@ -3,6 +3,17 @@
 
 let selectedCollegeFile = null;
 let isDemoCohort = false;
+let studentRiskRecords = [];
+
+function filterStudentRiskRecords(records, filters) {
+    const search = filters.search.trim().toLocaleLowerCase();
+    return records.filter(record =>
+        (!filters.category || record.risk_category === filters.category)
+        && (!filters.branch || record.branch === filters.branch)
+        && (!filters.semester || String(record.semester) === filters.semester)
+        && (!search || record.student_ref.toLocaleLowerCase().includes(search))
+    );
+}
 
 function appendTextCell(row, value, className = "") {
     const cell = document.createElement("td");
@@ -60,6 +71,104 @@ function clearAnalysisView() {
     document.getElementById("analyzeDatasetBtn").disabled = true;
     document.getElementById("analysisError").style.display = "none";
     document.getElementById("analysisResults").style.display = "none";
+    resetStudentRiskAnalysis();
+}
+
+function resetStudentRiskAnalysis() {
+    studentRiskRecords = [];
+    document.getElementById("studentRiskContent").hidden = true;
+    document.getElementById("studentRiskInitialEmpty").hidden = false;
+    document.getElementById("studentRiskMethodology").textContent =
+        "Preliminary, rule-based screening only — not a validated prediction. At Risk: attendance below 75%, " +
+        "CIE below 40%, or recorded active backlogs. Moderate Risk: attendance 75–85% or CIE 40–60%. " +
+        "Dataset readiness is assessed separately below.";
+    document.getElementById("studentRiskTableBody").replaceChildren();
+    document.getElementById("studentRiskNoRows").hidden = true;
+    document.getElementById("studentRiskCategoryFilter").value = "";
+    document.getElementById("studentRiskSearch").value = "";
+    document.getElementById("studentRiskBranchFilter").replaceChildren(
+        new Option("All branches", "")
+    );
+    document.getElementById("studentRiskSemesterFilter").replaceChildren(
+        new Option("All semesters", "")
+    );
+}
+
+function renderStudentRiskAnalysis(analysis = {}) {
+    studentRiskRecords = Array.isArray(analysis.records) ? analysis.records : [];
+    document.getElementById("studentRiskInitialEmpty").hidden = true;
+    document.getElementById("studentRiskContent").hidden = false;
+    if (analysis.methodology) {
+        document.getElementById("studentRiskMethodology").textContent = analysis.methodology;
+    }
+
+    const categoryCounts = analysis.category_counts || {};
+    const categoryFields = [
+        ["At Risk", "AtRisk"],
+        ["Moderate Risk", "Moderate"],
+        ["Good", "Good"],
+    ];
+    for (const [category, suffix] of categoryFields) {
+        const summary = categoryCounts[category] || {};
+        document.getElementById(`studentRisk${suffix}Count`).textContent = summary.count ?? 0;
+        document.getElementById(`studentRisk${suffix}Percent`).textContent =
+            `${Number(summary.percentage ?? 0).toFixed(1)}%`;
+    }
+    document.getElementById("studentRiskTotalCount").textContent = analysis.total_students ?? studentRiskRecords.length;
+
+    const branches = [...new Set(studentRiskRecords.map(record => record.branch).filter(Boolean))].sort();
+    const semesters = [...new Set(studentRiskRecords.map(record => String(record.semester)).filter(Boolean))]
+        .sort((left, right) => Number(left) - Number(right));
+    const branchFilter = document.getElementById("studentRiskBranchFilter");
+    const semesterFilter = document.getElementById("studentRiskSemesterFilter");
+    branchFilter.replaceChildren(new Option("All branches", ""));
+    semesterFilter.replaceChildren(new Option("All semesters", ""));
+    branches.forEach(branch => branchFilter.add(new Option(branch, branch)));
+    semesters.forEach(semester => semesterFilter.add(new Option(semester, semester)));
+    applyStudentRiskFilters();
+}
+
+function applyStudentRiskFilters() {
+    const filters = {
+        category: document.getElementById("studentRiskCategoryFilter").value,
+        branch: document.getElementById("studentRiskBranchFilter").value,
+        semester: document.getElementById("studentRiskSemesterFilter").value,
+        search: document.getElementById("studentRiskSearch").value,
+    };
+    const filteredRecords = filterStudentRiskRecords(studentRiskRecords, filters);
+    const tableBody = document.getElementById("studentRiskTableBody");
+    tableBody.replaceChildren();
+
+    for (const record of filteredRecords) {
+        const row = document.createElement("tr");
+        appendTextCell(row, record.student_ref);
+        appendTextCell(row, record.branch);
+        appendTextCell(row, record.academic_year);
+        appendTextCell(row, record.semester);
+        appendTextCell(row, `${Number(record.attendance_pct).toFixed(1)}%`);
+        const cieObtained = Number(record.cie_marks_obtained);
+        const cieMaximum = Number(record.cie_max_marks);
+        appendTextCell(
+            row,
+            Number.isFinite(cieObtained) && Number.isFinite(cieMaximum)
+                ? `${cieObtained} / ${cieMaximum}`
+                : "—"
+        );
+
+        const categoryCell = appendTextCell(row, "");
+        const categoryClass = {
+            "At Risk": "risk-category-at-risk",
+            "Moderate Risk": "risk-category-moderate",
+            "Good": "risk-category-good",
+        }[record.risk_category] || "risk-category-good";
+        appendBadge(categoryCell, record.risk_category, `risk-category-badge ${categoryClass}`);
+        appendTextCell(row, Array.isArray(record.main_risk_factors)
+            ? record.main_risk_factors.join(", ")
+            : "");
+        tableBody.appendChild(row);
+    }
+
+    document.getElementById("studentRiskNoRows").hidden = filteredRecords.length > 0;
 }
 
 function loadDemoCohort(type) {
@@ -117,6 +226,7 @@ async function submitCollegeAnalysis() {
     const errorBox = document.getElementById("analysisError");
     const resultsBox = document.getElementById("analysisResults");
 
+    resetStudentRiskAnalysis();
     analyzeBtn.disabled = true;
     const originalText = analyzeBtn.textContent;
     const spinner = document.createElement("span");
@@ -153,6 +263,7 @@ async function submitCollegeAnalysis() {
             throw new Error("Malformed API response received from server.");
         }
         renderAnalysisReport(data);
+        renderStudentRiskAnalysis(data.student_risk_analysis);
 
         loading.style.display = "none";
         resultsBox.style.display = "block";
@@ -455,6 +566,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("analyzeDatasetBtn")?.addEventListener("click", submitCollegeAnalysis);
     document.getElementById("clearAnalysisView")?.addEventListener("click", clearAnalysisView);
+    [
+        "studentRiskCategoryFilter",
+        "studentRiskBranchFilter",
+        "studentRiskSemesterFilter",
+    ].forEach(id => {
+        document.getElementById(id)?.addEventListener("change", applyStudentRiskFilters);
+    });
+    document.getElementById("studentRiskSearch")?.addEventListener("input", applyStudentRiskFilters);
     document.querySelectorAll("[data-demo-cohort]").forEach(button => {
         button.addEventListener("click", () => loadDemoCohort(button.dataset.demoCohort));
     });

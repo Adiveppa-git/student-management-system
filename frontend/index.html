@@ -69,14 +69,6 @@
     <!-- ================================================================= -->
     <div id="view-dashboard" class="tab-content" role="tabpanel" aria-labelledby="tab-dashboard">
 
-        <!-- Prominent Limitation Notice -->
-        <div class="disclaimer-banner">
-            <span class="banner-icon">⚠️</span>
-            <div>
-                <strong>Experimental Benchmark Notice:</strong> This machine learning model was trained on a secondary-school mathematics dataset from Portugal (Cortez & Silva, 2008). It has <strong>not</strong> been validated for Indian engineering-college students. Its predictions must not be interpreted as reliable academic-risk assessments for existing college records.
-            </div>
-        </div>
-
         <!-- Model Status Card -->
         <div class="card">
             <div class="card-title">
@@ -201,14 +193,6 @@
     <!-- ================================================================= -->
     <div id="view-benchmark" class="tab-content" role="tabpanel" aria-labelledby="tab-benchmark">
 
-        <!-- Prominent Limitation Notice -->
-        <div class="disclaimer-banner">
-            <span class="banner-icon">⚠️</span>
-            <div>
-                <strong>Experimental benchmark only:</strong> this model was trained on Portuguese secondary-school data. It has not been validated for Indian engineering-college students. Its predictions must not be interpreted as reliable academic-risk assessments for existing college records.
-            </div>
-        </div>
-
         <div class="card">
             <div class="card-title">
                 <span>🧪</span> UCI Academic-Risk Benchmark Predictor (31 Features)
@@ -241,7 +225,7 @@
                     <div class="form-group benchmark-subject-field">
                         <label for="bm_subject">Select Subject *</label>
                         <select id="bm_subject" required>
-                            <option value="" selected disabled>Select a subject...</option>
+                            <option value="" selected disabled>Select subject</option>
                             <option value="Mathematics">Mathematics</option>
                             <option value="Physics">Physics</option>
                             <option value="Chemistry">Chemistry</option>
@@ -257,20 +241,18 @@
                     </div>
                     <div class="form-group">
                         <label for="bm_G1">Term-1 Exam Marks (Obtained) *</label>
-                        <input type="number" id="bm_G1" min="0" step="any" required placeholder="Enter marks obtained">
-                        <span class="help-hint">Obtained marks are scaled proportionally to the UCI model's 0–20 scale.</span>
+                        <input type="number" id="bm_G1" min="0" max="90" step="any" required placeholder="Enter marks obtained">
                     </div>
                     <div class="form-group">
                         <label for="bm_studytime">Daily Study Time *</label>
                         <select id="bm_studytime" required>
-                            <option value="" selected disabled>Select daily study time...</option>
-                            <option value="less_than_1">Less than 1 hour</option>
-                            <option value="1_to_2">1–2 hours</option>
-                            <option value="2_to_3">2–3 hours</option>
-                            <option value="3_to_4">3–4 hours</option>
-                            <option value="more_than_4">More than 4 hours</option>
+                            <option value="" selected disabled>Select time</option>
+                            <option value="less_than_1">&lt;1 hr</option>
+                            <option value="1_to_2">1–2 hrs</option>
+                            <option value="2_to_3">2–3 hrs</option>
+                            <option value="3_to_4">3–4 hrs</option>
+                            <option value="more_than_4">&gt;4 hrs</option>
                         </select>
-                        <span class="help-hint">Approximate 5-day mapping to the weekly UCI feature: less than 1 hour/day → code 2; 1–2 hours/day → code 3; 2 or more hours/day → code 4.</span>
                     </div>
                     <div class="form-group">
                         <label for="bm_failures">Past Class Failures *</label>
@@ -290,15 +272,9 @@
                 </div>
                 <div class="form-grid-4">
                     <div class="form-group">
-                        <label for="bm_school">School *</label>
-                        <select id="bm_school" required>
-                            <option value="GP">GP - Gabriel Pereira</option>
-                            <option value="MS">MS - Mousinho da Silveira</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="bm_schoolsup">School Educational Support *</label>
                         <select id="bm_schoolsup" required>
+                            <option value="" selected disabled>Select support</option>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
                         </select>
@@ -306,6 +282,7 @@
                     <div class="form-group">
                         <label for="bm_famsup">Family Educational Support *</label>
                         <select id="bm_famsup" required>
+                            <option value="" selected disabled>Select support</option>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
                         </select>
@@ -313,6 +290,7 @@
                     <div class="form-group">
                         <label for="bm_paid">Extra Paid Classes *</label>
                         <select id="bm_paid" required>
+                            <option value="" selected disabled>Select classes</option>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
                         </select>
@@ -320,31 +298,9 @@
                     <div class="form-group">
                         <label for="bm_activities">Extracurricular Activities *</label>
                         <select id="bm_activities" required>
+                            <option value="" selected disabled>Select activities</option>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm_nursery">Attended Nursery School *</label>
-                        <select id="bm_nursery" required>
-                            <option value="yes">Yes</option>
-                            <option value="no">No</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm_higher">Wants Higher Education *</label>
-                        <select id="bm_higher" required>
-                            <option value="yes">Yes</option>
-                            <option value="no">No</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm_reason">Reason to Choose School *</label>
-                        <select id="bm_reason" required>
-                            <option value="course">Course Preference</option>
-                            <option value="home">Close to Home</option>
-                            <option value="reputation">School Reputation</option>
-                            <option value="other">Other</option>
                         </select>
                     </div>
                 </div>
@@ -353,12 +309,13 @@
                 <div class="form-section-header">
                     <span>👨‍👩‍👧</span> 3. Student Demographics & Family Background
                 </div>
-                <div class="form-grid-4">
+                <div class="form-grid-4 demographics-grid">
                     <div class="form-group">
                         <label for="bm_sex">Sex *</label>
                         <select id="bm_sex" required>
-                            <option value="F">Female (F)</option>
-                            <option value="M">Male (M)</option>
+                            <option value="" selected disabled>Select sex</option>
+                            <option value="F">Female</option>
+                            <option value="M">Male</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -368,49 +325,55 @@
                     <div class="form-group">
                         <label for="bm_address">Home Address Type *</label>
                         <select id="bm_address" required>
-                            <option value="U">Urban (U)</option>
-                            <option value="R">Rural (R)</option>
+                            <option value="" selected disabled>Select address</option>
+                            <option value="U">Urban</option>
+                            <option value="R">Rural</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_famsize">Family Size *</label>
                         <select id="bm_famsize" required>
-                            <option value="GT3">Greater than 3 (GT3)</option>
-                            <option value="LE3">Less or equal to 3 (LE3)</option>
+                            <option value="" selected disabled>Select size</option>
+                            <option value="GT3">Over 3</option>
+                            <option value="LE3">3 or fewer</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_Pstatus">Parent Cohabitation *</label>
                         <select id="bm_Pstatus" required>
-                            <option value="T">Living Together (T)</option>
-                            <option value="A">Living Apart (A)</option>
+                            <option value="" selected disabled>Select status</option>
+                            <option value="T">Together</option>
+                            <option value="A">Apart</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_Medu">Mother's Education *</label>
                         <select id="bm_Medu" required>
+                            <option value="" selected disabled>Select education</option>
                             <option value="0">None</option>
-                            <option value="1">Primary (4th grade)</option>
-                            <option value="2">5th to 9th grade</option>
+                            <option value="1">Primary (Grade 4)</option>
+                            <option value="2">Grades 5–9</option>
                             <option value="3">Secondary</option>
-                            <option value="4">Higher Education</option>
+                            <option value="4">Higher ed</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_Fedu">Father's Education *</label>
                         <select id="bm_Fedu" required>
+                            <option value="" selected disabled>Select education</option>
                             <option value="0">None</option>
-                            <option value="1">Primary (4th grade)</option>
-                            <option value="2">5th to 9th grade</option>
+                            <option value="1">Primary (Grade 4)</option>
+                            <option value="2">Grades 5–9</option>
                             <option value="3">Secondary</option>
-                            <option value="4">Higher Education</option>
+                            <option value="4">Higher ed</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_Mjob">Mother's Job *</label>
                         <select id="bm_Mjob" required>
+                            <option value="" selected disabled>Select job</option>
                             <option value="other">Other</option>
-                            <option value="services">Civil Services</option>
+                            <option value="services">Civil Service</option>
                             <option value="at_home">At Home</option>
                             <option value="teacher">Teacher</option>
                             <option value="health">Healthcare</option>
@@ -419,19 +382,12 @@
                     <div class="form-group">
                         <label for="bm_Fjob">Father's Job *</label>
                         <select id="bm_Fjob" required>
+                            <option value="" selected disabled>Select job</option>
                             <option value="other">Other</option>
-                            <option value="services">Civil Services</option>
+                            <option value="services">Civil Service</option>
                             <option value="at_home">At Home</option>
                             <option value="teacher">Teacher</option>
                             <option value="health">Healthcare</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm_guardian">Legal Guardian *</label>
-                        <select id="bm_guardian" required>
-                            <option value="mother">Mother</option>
-                            <option value="father">Father</option>
-                            <option value="other">Other</option>
                         </select>
                     </div>
                 </div>
@@ -444,15 +400,17 @@
                     <div class="form-group">
                         <label for="bm_traveltime">Travel Time to School *</label>
                         <select id="bm_traveltime" required>
-                            <option value="1">&lt; 15 min</option>
-                            <option value="2">15 to 30 min</option>
-                            <option value="3">30 to 60 min</option>
-                            <option value="4">&gt; 60 min</option>
+                            <option value="" selected disabled>Select time</option>
+                            <option value="1">&lt;15 min</option>
+                            <option value="2">15–30 min</option>
+                            <option value="3">30–60 min</option>
+                            <option value="4">&gt;60 min</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_internet">Internet Access at Home *</label>
                         <select id="bm_internet" required>
+                            <option value="" selected disabled>Select access</option>
                             <option value="yes">Yes</option>
                             <option value="no">No</option>
                         </select>
@@ -460,6 +418,7 @@
                     <div class="form-group">
                         <label for="bm_romantic">Romantic Relationship *</label>
                         <select id="bm_romantic" required>
+                            <option value="" selected disabled>Select status</option>
                             <option value="no">No</option>
                             <option value="yes">Yes</option>
                         </select>
@@ -467,19 +426,21 @@
                     <div class="form-group">
                         <label for="bm_famrel">Family Relationship Quality *</label>
                         <select id="bm_famrel" required>
-                            <option value="1">Very Bad</option>
-                            <option value="2">Bad</option>
-                            <option value="3">Normal</option>
+                            <option value="" selected disabled>Select quality</option>
+                            <option value="1">Very poor</option>
+                            <option value="2">Poor</option>
+                            <option value="3">Average</option>
                             <option value="4">Good</option>
-                            <option value="5" selected>Excellent</option>
+                            <option value="5">Excellent</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_freetime">Free Time After School *</label>
                         <select id="bm_freetime" required>
+                            <option value="" selected disabled>Select free time</option>
                             <option value="1">Very Low</option>
                             <option value="2">Low</option>
-                            <option value="3" selected>Medium</option>
+                            <option value="3">Medium</option>
                             <option value="4">High</option>
                             <option value="5">Very High</option>
                         </select>
@@ -487,41 +448,33 @@
                     <div class="form-group">
                         <label for="bm_goout">Going Out with Friends *</label>
                         <select id="bm_goout" required>
+                            <option value="" selected disabled>Select frequency</option>
                             <option value="1">Very Low</option>
                             <option value="2">Low</option>
-                            <option value="3" selected>Medium</option>
-                            <option value="4">High</option>
-                            <option value="5">Very High</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm_Dalc">Workday Alcohol Consumption *</label>
-                        <select id="bm_Dalc" required>
-                            <option value="1" selected>Very Low</option>
-                            <option value="2">Low</option>
                             <option value="3">Medium</option>
                             <option value="4">High</option>
                             <option value="5">Very High</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="bm_Walc">Weekend Alcohol Consumption *</label>
-                        <select id="bm_Walc" required>
-                            <option value="1" selected>Very Low</option>
-                            <option value="2">Low</option>
-                            <option value="3">Medium</option>
-                            <option value="4">High</option>
-                            <option value="5">Very High</option>
+                        <label for="bm_badHabits">Addiction to Bad Habits *</label>
+                        <select id="bm_badHabits" required>
+                            <option value="" selected disabled>Select level</option>
+                            <option value="none">None</option>
+                            <option value="low">Low</option>
+                            <option value="average">Average</option>
+                            <option value="high">High</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="bm_health">Current Health Status *</label>
                         <select id="bm_health" required>
-                            <option value="1">Very Bad</option>
-                            <option value="2">Bad</option>
-                            <option value="3">Normal</option>
+                            <option value="" selected disabled>Select health</option>
+                            <option value="1">Very poor</option>
+                            <option value="2">Poor</option>
+                            <option value="3">Fair</option>
                             <option value="4">Good</option>
-                            <option value="5" selected>Very Good</option>
+                            <option value="5">Very Good</option>
                         </select>
                     </div>
                 </div>
@@ -581,14 +534,6 @@
     <!-- ================================================================= -->
     <div id="view-analysis" class="tab-content" role="tabpanel" aria-labelledby="tab-analysis">
 
-        <!-- Prominent Data Quality Assessment Disclaimer Notice -->
-        <div class="disclaimer-banner">
-            <span class="banner-icon">⚠️</span>
-            <div>
-                <strong>Data Quality & Model Readiness Assessment Notice:</strong> This audit performs structural data validation, missing-value profiling, numeric summarization, and statistical readiness checks on authorized de-identified engineering-college academic records. It is a <strong>data-quality assessment, not a prediction of individual students' performance</strong>. College model training remains strictly blocked pending authorized human review and experimental evaluation protocol design.
-            </div>
-        </div>
-
         <!-- Upload & Evaluation Controls Card -->
         <div class="card">
             <div class="card-title">
@@ -641,6 +586,94 @@
             <!-- Error Banner -->
             <div id="analysisError" class="error-banner" role="alert" aria-live="assertive"></div>
         </div>
+
+        <section class="card student-risk-section" id="studentRiskAnalysis" aria-labelledby="studentRiskTitle">
+            <div class="card-title" id="studentRiskTitle">
+                <span>🎓</span> Student Academic Risk Screening
+            </div>
+            <p class="student-risk-methodology" id="studentRiskMethodology">
+                Preliminary, rule-based screening only — not a validated prediction. At Risk: attendance below 75%,
+                CIE below 40%, or recorded active backlogs. Moderate Risk: attendance 75–85% or CIE 40–60%.
+                Dataset readiness is assessed separately below.
+            </p>
+
+            <div id="studentRiskInitialEmpty" class="student-risk-empty" role="status">
+                Analyze a dataset to view student-level screening results.
+            </div>
+            <div id="studentRiskContent" hidden>
+                <div class="risk-summary-grid" id="studentRiskSummary">
+                    <div class="risk-summary-card risk-summary-at-risk">
+                        <span>At Risk</span>
+                        <strong id="studentRiskAtRiskCount">0</strong>
+                        <small id="studentRiskAtRiskPercent">0.0%</small>
+                    </div>
+                    <div class="risk-summary-card risk-summary-moderate">
+                        <span>Moderate Risk</span>
+                        <strong id="studentRiskModerateCount">0</strong>
+                        <small id="studentRiskModeratePercent">0.0%</small>
+                    </div>
+                    <div class="risk-summary-card risk-summary-good">
+                        <span>Good</span>
+                        <strong id="studentRiskGoodCount">0</strong>
+                        <small id="studentRiskGoodPercent">0.0%</small>
+                    </div>
+                    <div class="risk-summary-card risk-summary-total">
+                        <span>Total Students</span>
+                        <strong id="studentRiskTotalCount">0</strong>
+                        <small>Analyzed</small>
+                    </div>
+                </div>
+
+                <div class="student-risk-filters" aria-label="Filter student risk screening results">
+                    <label>
+                        Risk category
+                        <select id="studentRiskCategoryFilter">
+                            <option value="">All categories</option>
+                            <option value="At Risk">At Risk</option>
+                            <option value="Moderate Risk">Moderate Risk</option>
+                            <option value="Good">Good</option>
+                        </select>
+                    </label>
+                    <label>
+                        Branch
+                        <select id="studentRiskBranchFilter">
+                            <option value="">All branches</option>
+                        </select>
+                    </label>
+                    <label>
+                        Semester
+                        <select id="studentRiskSemesterFilter">
+                            <option value="">All semesters</option>
+                        </select>
+                    </label>
+                    <label>
+                        Student reference
+                        <input id="studentRiskSearch" type="search" placeholder="Search reference">
+                    </label>
+                </div>
+
+                <div class="data-table-wrapper student-risk-table-wrapper">
+                    <table class="data-table student-risk-table" aria-label="Preliminary student academic risk screening">
+                        <thead>
+                            <tr>
+                                <th>Student Reference</th>
+                                <th>Branch</th>
+                                <th>Academic Year</th>
+                                <th>Semester</th>
+                                <th>Attendance Percentage</th>
+                                <th>CIE Marks</th>
+                                <th>Risk Category</th>
+                                <th>Main Risk Factors</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentRiskTableBody"></tbody>
+                    </table>
+                    <div id="studentRiskNoRows" class="student-risk-empty" role="status" hidden>
+                        No student records match the selected filters.
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Analysis & Readiness Results Container -->
         <div id="analysisResults" aria-live="polite" class="inline-style-5">
@@ -860,8 +893,8 @@
     <script src="js/navigation.js" defer></script>
     <script src="js/student-registration.js?v=2" defer></script>
     <script src="js/ai-dashboard.js" defer></script>
-    <script src="js/benchmark-prediction.js" defer></script>
-    <script src="js/college-dataset-analysis.js" defer></script>
+    <script src="js/benchmark-prediction.js?v=3" defer></script>
+    <script src="js/college-dataset-analysis.js?v=2" defer></script>
 
 </body>
 </html>

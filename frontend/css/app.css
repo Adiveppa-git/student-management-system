@@ -313,6 +313,140 @@
             color: #64748b;
         }
 
+        .student-risk-section {
+            margin-top: 18px;
+        }
+
+        .student-risk-methodology {
+            margin: -4px 0 16px;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .student-risk-empty {
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 18px;
+            text-align: center;
+            color: #475569;
+            background: #f8fafc;
+        }
+
+        .risk-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .risk-summary-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .risk-summary-card span {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .risk-summary-card strong {
+            font-size: 25px;
+            line-height: 1.2;
+        }
+
+        .risk-summary-card small {
+            font-size: 12px;
+        }
+
+        .risk-summary-at-risk {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            color: #9f1239;
+        }
+
+        .risk-summary-moderate {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #92400e;
+        }
+
+        .risk-summary-good {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        .risk-summary-total {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1e40af;
+        }
+
+        .student-risk-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .student-risk-filters label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .student-risk-filters select,
+        .student-risk-filters input {
+            width: 100%;
+            min-width: 0;
+            padding: 9px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #1f2937;
+            font: inherit;
+        }
+
+        .student-risk-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .student-risk-table {
+            min-width: 900px;
+        }
+
+        .risk-category-badge {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .risk-category-at-risk {
+            background: #ffe4e6;
+            color: #9f1239;
+        }
+
+        .risk-category-moderate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .risk-category-good {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
         /* Health Status Badge */
         .status-badge {
             display: inline-flex;
@@ -397,6 +531,10 @@
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 14px;
             margin-bottom: 12px;
+        }
+
+        .form-grid-4.demographics-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .benchmark-subject-field {
@@ -765,6 +903,15 @@
             }
             .form-grid-4 {
                 grid-template-columns: 1fr;
+            }
+            .form-grid-4.demographics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .form-grid-4.demographics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
