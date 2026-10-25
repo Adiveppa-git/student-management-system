@@ -7,6 +7,7 @@ Operates independently of database storage and preserves student privacy.
 
 import csv
 import io
+import re
 import statistics
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -33,6 +34,95 @@ MIN_REQUIRED_SAMPLES = 100
 MIN_LABELED_SAMPLES = 80
 MIN_MINORITY_CLASS_SAMPLES = 15
 MAX_ALLOWABLE_ERROR_RATE = 0.05
+
+STUDENT_RISK_CATEGORIES = ("At Risk", "Moderate Risk", "Good")
+SAFE_PSEUDONYM_PATTERN = re.compile(
+    r"^(?:(?:ANON|ANONYMOUS|PSEUDO|PSEUDONYM|HASH|HASHED|STU|STUDENT|SYNTH|REF)[_-][A-Z0-9_-]{1,58}|[A-F0-9]{32,64})$"
+)
+
+
+def analyze_student_risk_screening(raw_records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build a preliminary, non-validated risk screen from each student's latest valid observation."""
+    latest_by_student: Dict[str, Tuple[int, Dict[str, Any], CollegeAcademicObservation]] = {}
+    for row_index, record in enumerate(raw_records, start=1):
+        observation, _ = validate_college_observation(record)
+        if observation is None:
+            continue
+
+        existing = latest_by_student.get(observation.student_ref)
+        observation_period = (observation.academic_year, observation.semester)
+        if existing is None or observation_period >= (
+            existing[2].academic_year,
+            existing[2].semester,
+        ):
+            latest_by_student[observation.student_ref] = (row_index, record, observation)
+
+    risk_rows: List[Dict[str, Any]] = []
+    for row_index, record, observation in latest_by_student.values():
+        cie_percentage = observation.normalized_cie_pct
+        strong_factors = []
+        moderate_factors = []
+
+        if observation.attendance_pct < 75:
+            strong_factors.append("Attendance below 75%")
+        if cie_percentage < 40:
+            strong_factors.append("CIE below 40%")
+        backlog_value = record.get("active_backlogs")
+        if backlog_value is not None and int(backlog_value) > 0:
+            strong_factors.append(f"Active backlogs: {int(backlog_value)}")
+
+        if 75 <= observation.attendance_pct <= 85:
+            moderate_factors.append("Attendance 75–85%")
+        if 40 <= cie_percentage <= 60:
+            moderate_factors.append("CIE 40–60%")
+
+        if strong_factors:
+            category = "At Risk"
+            risk_factors = strong_factors + moderate_factors
+        elif moderate_factors:
+            category = "Moderate Risk"
+            risk_factors = moderate_factors
+        else:
+            category = "Good"
+            risk_factors = ["No screening indicators identified"]
+
+        student_ref = observation.student_ref
+        if not SAFE_PSEUDONYM_PATTERN.fullmatch(student_ref):
+            student_ref = f"Reference withheld ({row_index})"
+
+        risk_rows.append({
+            "student_ref": student_ref,
+            "branch": observation.branch,
+            "academic_year": observation.academic_year,
+            "semester": observation.semester,
+            "attendance_pct": observation.attendance_pct,
+            "cie_marks_obtained": observation.cie_marks_obtained,
+            "cie_max_marks": observation.cie_max_marks,
+            "risk_category": category,
+            "main_risk_factors": risk_factors,
+        })
+
+    counts = {category: 0 for category in STUDENT_RISK_CATEGORIES}
+    for row in risk_rows:
+        counts[row["risk_category"]] += 1
+    total_students = len(risk_rows)
+    return {
+        "classification": "PRELIMINARY_RULE_BASED_SCREENING",
+        "methodology": (
+            "Not a validated prediction. At Risk: attendance <75%, normalized CIE <40%, or any recorded active backlog. "
+            "Moderate Risk: attendance 75–85% or normalized CIE 40–60%. Good: no listed indicators. "
+            "The latest valid semester observation is used per student; unavailable optional backlog data is ignored."
+        ),
+        "total_students": total_students,
+        "category_counts": {
+            category: {
+                "count": count,
+                "percentage": round(count / total_students * 100, 1) if total_students else 0.0,
+            }
+            for category, count in counts.items()
+        },
+        "records": risk_rows,
+    }
 
 
 def validate_college_observation(record: Dict[str, Any]) -> Tuple[Optional[CollegeAcademicObservation], List[str]]:
@@ -558,6 +648,7 @@ def analyze_college_dataset_readiness(
                 "verified_outcome_breakdown": {},
                 "outcome_sources": [],
             },
+            "student_risk_analysis": analyze_student_risk_screening([]),
             "target_leakage_warnings": [],
             "readiness_assessment": {
                 "status": "TRAINING_BLOCKED",
@@ -906,6 +997,7 @@ def analyze_college_dataset_readiness(
         "numeric_summary_statistics": numeric_summary,
         "categorical_distributions": categorical_distributions,
         "outcome_and_class_balance": outcome_and_class_balance,
+        "student_risk_analysis": analyze_student_risk_screening(raw_records),
         "target_leakage_warnings": leakage_warnings,
         "readiness_assessment": {
             "status": readiness_status,

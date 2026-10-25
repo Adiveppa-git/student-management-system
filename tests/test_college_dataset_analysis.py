@@ -21,7 +21,11 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database.connection import collection
-from app.ml.college_data_prep import MAX_CSV_FILE_SIZE_BYTES, parse_and_analyze_college_csv
+from app.ml.college_data_prep import (
+    MAX_CSV_FILE_SIZE_BYTES,
+    analyze_student_risk_screening,
+    parse_and_analyze_college_csv,
+)
 
 client = TestClient(app)
 ORIGINAL_USNS = ["1DB24IS045", "1DB23IS001", "1DB25EC096", "1DB25CS009", "1DB23IS069", "1DB22CS020"]
@@ -86,6 +90,18 @@ def test_analyze_csv_valid_cohort_ready_for_review(valid_120_row_cohort_csv):
     assert cb["verified_outcome_breakdown"]["PASS"] == 80
     assert cb["verified_outcome_breakdown"]["FAIL_OR_DETAINED"] == 40
     assert "OFFICIAL_EXAM_CELL" in cb["outcome_sources"]
+
+    # Preliminary student risk screen is separate from dataset readiness and verified labels.
+    risk_analysis = data["student_risk_analysis"]
+    assert risk_analysis["classification"] == "PRELIMINARY_RULE_BASED_SCREENING"
+    assert risk_analysis["total_students"] == 120
+    assert risk_analysis["category_counts"] == {
+        "At Risk": {"count": 40, "percentage": 33.3},
+        "Moderate Risk": {"count": 0, "percentage": 0.0},
+        "Good": {"count": 80, "percentage": 66.7},
+    }
+    assert "not a validated prediction" in risk_analysis["methodology"].lower()
+    assert data["readiness_assessment"]["status"] == "READY_FOR_REVIEW"
 
     # Readiness assessment decision
     ra = data["readiness_assessment"]
@@ -159,6 +175,95 @@ def test_analyze_csv_missing_values_profiling():
     assert mvs["previous_sgpa"]["missing_count"] == 2
     assert mvs["attendance_pct"]["missing_count"] == 0
     assert mvs["attendance_pct"]["missing_pct"] == 0.0
+
+
+def test_student_risk_screening_latest_observation_and_optional_columns():
+    """Use latest valid observation per student and tolerate missing optional indicators."""
+    records = [
+        {
+            "student_ref": "ANON_001",
+            "branch": "CSE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 60,
+            "cie_marks_obtained": 10,
+            "cie_max_marks": 50,
+            "active_backlogs": 2,
+        },
+        {
+            "student_ref": "ANON_001",
+            "branch": "CSE",
+            "academic_year": 2,
+            "semester": 3,
+            "attendance_pct": 90,
+            "cie_marks_obtained": 40,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_002",
+            "branch": "ECE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 80,
+            "cie_marks_obtained": 30,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_003",
+            "branch": "ISE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 92,
+            "cie_marks_obtained": 42,
+            "cie_max_marks": 50,
+        },
+    ]
+
+    result = analyze_student_risk_screening(records)
+    assert result["total_students"] == 3
+    assert result["category_counts"] == {
+        "At Risk": {"count": 0, "percentage": 0.0},
+        "Moderate Risk": {"count": 1, "percentage": 33.3},
+        "Good": {"count": 2, "percentage": 66.7},
+    }
+    latest = next(row for row in result["records"] if row["student_ref"] == "ANON_001")
+    assert latest["semester"] == 3
+    assert latest["risk_category"] == "Good"
+    assert all("Active backlogs" not in ", ".join(row["main_risk_factors"]) for row in result["records"])
+
+
+def test_student_risk_screening_empty_dataset_has_zero_counts():
+    result = analyze_student_risk_screening([])
+    assert result["total_students"] == 0
+    assert all(item == {"count": 0, "percentage": 0.0} for item in result["category_counts"].values())
+    assert result["records"] == []
+
+
+def test_student_risk_screening_does_not_return_untrusted_references():
+    result = analyze_student_risk_screening([{
+        "student_ref": "jane.doe@example.com",
+        "branch": "<img src=x onerror=alert(1)>",
+        "academic_year": 1,
+        "semester": 1,
+        "attendance_pct": 90,
+        "cie_marks_obtained": 40,
+        "cie_max_marks": 50,
+    }])
+    assert result["records"][0]["student_ref"] == "Reference withheld (1)"
+    assert result["records"][0]["branch"] == "<IMG SRC=X ONERROR=ALERT(1)>"
+    assert "jane.doe@example.com" not in repr(result["records"])
+
+
+def test_empty_student_risk_analysis_endpoint_response():
+    csv_text = "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained\n"
+    response = client.post(
+        "/api/ai/college/analyze-dataset",
+        files={"file": ("empty_cohort.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert response.status_code == 200
+    data = response.json()["student_risk_analysis"]
+    assert data["total_students"] == 0
+    assert data["records"] == []
 
 
 def test_analyze_csv_critical_missing_values_blocks_readiness():

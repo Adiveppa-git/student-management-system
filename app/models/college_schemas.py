@@ -342,6 +342,10 @@ class CollegeDatasetAnalysisResponse(BaseModel):
     outcome_and_class_balance: Dict[str, Any] = Field(
         ..., description="Verified outcome distributions, labeling rate, and binary risk class balance"
     )
+    student_risk_analysis: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Preliminary non-validated rule-based screening summary and latest per-student observations",
+    )
     target_leakage_warnings: List[Dict[str, str]] = Field(
         default_factory=list, description="Detected post-examination or future-information leakage features"
     )
