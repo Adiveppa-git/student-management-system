@@ -221,7 +221,7 @@ def test_all_31_benchmark_input_elements_present():
 def test_benchmark_numeric_labels_keep_model_values():
     """Verify coded select labels are readable while option values remain model-compatible."""
     content = FRONTEND_FILE.read_text(encoding="utf-8")
-    benchmark_form = content.split('<form id="benchmarkForm">', 1)[1].split("</form>", 1)[0]
+    benchmark_form = content.split('<form id="benchmarkForm"', 1)[1].split("</form>", 1)[0]
     selects = {
         field: options
         for field, options in re.findall(
@@ -230,8 +230,12 @@ def test_benchmark_numeric_labels_keep_model_values():
     }
     expected_options = {
         "studytime": [
-            ("1", "< 2 hours"), ("2", "2 to 5 hours"),
-            ("3", "5 to 10 hours"), ("4", "> 10 hours"),
+            ("", "Select daily study time..."),
+            ("less_than_1", "Less than 1 hour"),
+            ("1_to_2", "1–2 hours"),
+            ("2_to_3", "2–3 hours"),
+            ("3_to_4", "3–4 hours"),
+            ("more_than_4", "More than 4 hours"),
         ],
         "Medu": [
             ("0", "None"), ("1", "Primary (4th grade)"), ("2", "5th to 9th grade"),
@@ -276,7 +280,7 @@ def test_benchmark_numeric_labels_keep_model_values():
         actual = [
             (value, html.unescape(re.sub(r"<[^>]+>", "", label)).strip())
             for value, label in re.findall(
-                r'<option\s+value="([^"]+)"[^>]*>(.*?)</option>', option_markup, re.DOTALL
+                r'<option\s+value="([^"]*)"[^>]*>(.*?)</option>', option_markup, re.DOTALL
             )
         ]
         assert actual == expected, f"Unexpected option values or labels for bm_{field}"
@@ -288,38 +292,82 @@ def test_benchmark_numeric_labels_keep_model_values():
             assert not re.match(r"^\d+\s*:", visible_label), visible_label
 
     benchmark_script = (FRONTEND_DIR / "js" / "benchmark-prediction.js").read_text(encoding="utf-8")
-    for field in ("studytime", "Medu", "Fedu", "traveltime", "famrel", "freetime",
+    assert 'label for="bm_studytime">Daily Study Time *' in benchmark_form
+    assert "DAILY_STUDYTIME_TO_WEEKLY[document.getElementById(\"bm_studytime\").value]" in benchmark_script
+    assert "less_than_1: 2" in benchmark_script
+    assert '"1_to_2": 3' in benchmark_script
+    assert '"2_to_3": 4' in benchmark_script
+    assert '"3_to_4": 4' in benchmark_script
+    assert "more_than_4: 4" in benchmark_script
+    assert 'studytime: "less_than_1"' in benchmark_script
+    assert 'studytime: "more_than_4"' in benchmark_script
+    assert 'studytime: "1_to_2"' in benchmark_script
+    assert "5-day mapping to the weekly UCI feature" in benchmark_form
+    for field in ("Medu", "Fedu", "traveltime", "famrel", "freetime",
                   "goout", "Dalc", "Walc", "health"):
         assert f'{field}: parseInt(document.getElementById("bm_{field}").value)' in benchmark_script
 
 
-def test_benchmark_marks_selector_preserves_numeric_g1_payload():
-    """Verify marks choices, required reset state, presets, and numeric G1 conversion."""
+def test_benchmark_subject_marks_conversion_validation_presets_and_reset():
+    """Verify subject context, marks validation, presets, reset, and model payload."""
     content = FRONTEND_FILE.read_text(encoding="utf-8")
-    marks_field = re.search(
-        r'<label for="bm_G1">(.*?)</label>\s*(<select id="bm_G1".*?</select>)\s*'
-        r'<span class="help-hint">(.*?)</span>',
-        content,
+    benchmark_form = content.split('<form id="benchmarkForm"', 1)[1].split("</form>", 1)[0]
+    assert "novalidate" in benchmark_form
+
+    subject_selector = re.search(
+        r'<label for="bm_subject">(.*?)</label>\s*(<select id="bm_subject".*?</select>)',
+        benchmark_form,
         re.DOTALL,
     )
-    assert marks_field is not None
-    label, selector, helper = marks_field.groups()
-    assert label == "Term-1 Exam Marks *"
-    assert 'required' in selector
-    assert '<option value="" selected disabled>Select marks...</option>' in selector
-    options = re.findall(r'<option value="(\d+)">(.*?)</option>', selector)
-    assert options == [
-        (str(mark), f"{mark} {'mark' if mark == 1 else 'marks'}")
-        for mark in range(21)
+    assert subject_selector is not None
+    subject_label, subject_select = subject_selector.groups()
+    assert subject_label == "Select Subject *"
+    assert "required" in subject_select
+    assert '<option value="" selected disabled>Select a subject...</option>' in subject_select
+    assert re.findall(r'<option value="([^"]+)">(.*?)</option>', subject_select) == [
+        ("Mathematics", "Mathematics"), ("Physics", "Physics"), ("Chemistry", "Chemistry"),
+        ("Computer Science", "Computer Science"), ("Electronics", "Electronics"),
+        ("Communication Systems", "Communication Systems"), ("Other", "Other"),
     ]
-    assert helper == "Scale: 0–20 marks; below 10 indicates failing in the benchmark dataset."
+
+    field_order = [
+        benchmark_form.index('id="bm_subject"'),
+        benchmark_form.index('id="bm_maxMarks"'),
+        benchmark_form.index('id="bm_G1"'),
+    ]
+    assert field_order == sorted(field_order)
+    assert 'class="form-group benchmark-subject-field"' in benchmark_form
+    max_input = re.search(r'<input[^>]*id="bm_maxMarks"[^>]*>', benchmark_form).group()
+    assert all(attribute in max_input for attribute in
+               ('type="number"', 'min="1"', 'step="1"', "required"))
+    obtained_input = re.search(r'<input[^>]*id="bm_G1"[^>]*>', benchmark_form).group()
+    assert all(attribute in obtained_input for attribute in
+               ('type="number"', 'min="0"', "required", 'placeholder="Enter marks obtained"'))
+
+    assert 'id="resultSubject"' in content
+    assert "Subject context only:" in content
+    assert "not subject-specific risk" in content
 
     benchmark_script = (FRONTEND_DIR / "js" / "benchmark-prediction.js").read_text(encoding="utf-8")
-    assert 'G1: parseFloat(document.getElementById("bm_G1").value)' in benchmark_script
-    for preset_value in ("G1: 4.0", "G1: 18.0", "G1: 11.0"):
-        assert preset_value in benchmark_script
+    assert "maxMarksInput.validity.valid" in benchmark_script
+    assert "marksInput.max = maxMarks" in benchmark_script
+    assert "marksInput.validity.rangeOverflow" in benchmark_script
+    assert "form.checkValidity()" in benchmark_script
+    assert "showValidationError(" in benchmark_script
+    assert "G1: (marksObtained / maxMarks) * 20" in benchmark_script
+    assert "subject: \"Mathematics\", maxMarks: 20" in benchmark_script
+    assert "subject: \"Physics\", maxMarks: 20" in benchmark_script
+    assert "subject: \"Chemistry\", maxMarks: 20" in benchmark_script
     assert 'if (el) el.value = value;' in benchmark_script
     assert 'document.getElementById("benchmarkForm").reset();' in benchmark_script
+    assert 'document.getElementById("resultSubject").textContent = subject' in benchmark_script
+    payload_block = benchmark_script.split("const payload = {", 1)[1].split("\n    };", 1)[0]
+    assert not re.search(r"^\s*subject\s*:", payload_block, re.MULTILINE)
+    assert not re.search(r"^\s*maxMarks\s*:", payload_block, re.MULTILINE)
+
+    assert (30 / 40) * 20 == 15
+    assert (40 / 50) * 20 == 16
+    assert (75 / 100) * 20 == 15
 
 
 def test_pydantic_schema_field_parity():

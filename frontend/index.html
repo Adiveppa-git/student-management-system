@@ -231,50 +231,46 @@
                 </button>
             </div>
 
-            <form id="benchmarkForm">
+            <form id="benchmarkForm" novalidate>
 
                 <!-- SECTION 1: Academic & Prior Performance -->
                 <div class="form-section-header">
                     <span>📚</span> 1. Academic & Prior Evaluation (Key Predictive Features)
                 </div>
                 <div class="form-grid-4">
-                    <div class="form-group">
-                        <label for="bm_G1">Term-1 Exam Marks *</label>
-                        <select id="bm_G1" required>
-                            <option value="" selected disabled>Select marks...</option>
-                            <option value="0">0 marks</option>
-                            <option value="1">1 mark</option>
-                            <option value="2">2 marks</option>
-                            <option value="3">3 marks</option>
-                            <option value="4">4 marks</option>
-                            <option value="5">5 marks</option>
-                            <option value="6">6 marks</option>
-                            <option value="7">7 marks</option>
-                            <option value="8">8 marks</option>
-                            <option value="9">9 marks</option>
-                            <option value="10">10 marks</option>
-                            <option value="11">11 marks</option>
-                            <option value="12">12 marks</option>
-                            <option value="13">13 marks</option>
-                            <option value="14">14 marks</option>
-                            <option value="15">15 marks</option>
-                            <option value="16">16 marks</option>
-                            <option value="17">17 marks</option>
-                            <option value="18">18 marks</option>
-                            <option value="19">19 marks</option>
-                            <option value="20">20 marks</option>
+                    <div class="form-group benchmark-subject-field">
+                        <label for="bm_subject">Select Subject *</label>
+                        <select id="bm_subject" required>
+                            <option value="" selected disabled>Select a subject...</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Physics">Physics</option>
+                            <option value="Chemistry">Chemistry</option>
+                            <option value="Computer Science">Computer Science</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Communication Systems">Communication Systems</option>
+                            <option value="Other">Other</option>
                         </select>
-                        <span class="help-hint">Scale: 0–20 marks; below 10 indicates failing in the benchmark dataset.</span>
                     </div>
                     <div class="form-group">
-                        <label for="bm_studytime">Weekly Study Time *</label>
+                        <label for="bm_maxMarks">Maximum Marks *</label>
+                        <input type="number" id="bm_maxMarks" min="1" step="1" required placeholder="Enter maximum marks">
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_G1">Term-1 Exam Marks (Obtained) *</label>
+                        <input type="number" id="bm_G1" min="0" step="any" required placeholder="Enter marks obtained">
+                        <span class="help-hint">Obtained marks are scaled proportionally to the UCI model's 0–20 scale.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm_studytime">Daily Study Time *</label>
                         <select id="bm_studytime" required>
-                            <option value="">Select hours...</option>
-                            <option value="1">&lt; 2 hours</option>
-                            <option value="2">2 to 5 hours</option>
-                            <option value="3">5 to 10 hours</option>
-                            <option value="4">&gt; 10 hours</option>
+                            <option value="" selected disabled>Select daily study time...</option>
+                            <option value="less_than_1">Less than 1 hour</option>
+                            <option value="1_to_2">1–2 hours</option>
+                            <option value="2_to_3">2–3 hours</option>
+                            <option value="3_to_4">3–4 hours</option>
+                            <option value="more_than_4">More than 4 hours</option>
                         </select>
+                        <span class="help-hint">Approximate 5-day mapping to the weekly UCI feature: less than 1 hour/day → code 2; 1–2 hours/day → code 3; 2 or more hours/day → code 4.</span>
                     </div>
                     <div class="form-group">
                         <label for="bm_failures">Past Class Failures *</label>
@@ -539,6 +535,10 @@
 
             <!-- Prediction Result Panel -->
             <div id="benchmarkResult" class="result-box">
+                <p class="benchmark-subject-context">
+                    <strong>Subject context only:</strong> Subject selected: <span id="resultSubject">--</span>.
+                    The UCI model predicts overall academic risk, not subject-specific risk.
+                </p>
                 <div class="result-header">
                     <div>
                         <span class="inline-style-23">Evaluation Outcome</span>
