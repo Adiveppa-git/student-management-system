@@ -10,17 +10,7 @@ function createStudentAction(label, className, action) {
 }
 
 function viewStudent(student) {
-    const details = [
-        `Name: ${student.name}`,
-        `USN: ${student.usn}`,
-        `Branch: ${student.branch}`,
-        `Year: ${student.year}`,
-        `Email: ${student.email}`,
-    ];
-    if (student.attendance_pct != null) details.push(`Attendance: ${student.attendance_pct}%`);
-    if (student.previous_gpa != null) details.push(`CGPA: ${student.previous_gpa}`);
-    if (student.backlog_count != null) details.push(`Backlogs: ${student.backlog_count}`);
-    window.alert(details.join("\n"));
+    window.location.href = `student-details.html?usn=${encodeURIComponent(student.usn)}`;
 }
 
 async function deleteStudent(usn) {
