@@ -10,6 +10,8 @@ Validates:
 """
 
 from pathlib import Path
+import html
+import re
 import pytest
 from fastapi.testclient import TestClient
 
@@ -214,6 +216,110 @@ def test_all_31_benchmark_input_elements_present():
     for feature in REQUIRED_31_FEATURES:
         expected_id = f'id="bm_{feature}"'
         assert expected_id in content, f"Missing benchmark input element for feature: {feature}"
+
+
+def test_benchmark_numeric_labels_keep_model_values():
+    """Verify coded select labels are readable while option values remain model-compatible."""
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+    benchmark_form = content.split('<form id="benchmarkForm">', 1)[1].split("</form>", 1)[0]
+    selects = {
+        field: options
+        for field, options in re.findall(
+            r'<select id="bm_([^"]+)"[^>]*>(.*?)</select>', benchmark_form, re.DOTALL
+        )
+    }
+    expected_options = {
+        "studytime": [
+            ("1", "< 2 hours"), ("2", "2 to 5 hours"),
+            ("3", "5 to 10 hours"), ("4", "> 10 hours"),
+        ],
+        "Medu": [
+            ("0", "None"), ("1", "Primary (4th grade)"), ("2", "5th to 9th grade"),
+            ("3", "Secondary"), ("4", "Higher Education"),
+        ],
+        "Fedu": [
+            ("0", "None"), ("1", "Primary (4th grade)"), ("2", "5th to 9th grade"),
+            ("3", "Secondary"), ("4", "Higher Education"),
+        ],
+        "traveltime": [
+            ("1", "< 15 min"), ("2", "15 to 30 min"),
+            ("3", "30 to 60 min"), ("4", "> 60 min"),
+        ],
+        "famrel": [
+            ("1", "Very Bad"), ("2", "Bad"), ("3", "Normal"),
+            ("4", "Good"), ("5", "Excellent"),
+        ],
+        "freetime": [
+            ("1", "Very Low"), ("2", "Low"), ("3", "Medium"),
+            ("4", "High"), ("5", "Very High"),
+        ],
+        "goout": [
+            ("1", "Very Low"), ("2", "Low"), ("3", "Medium"),
+            ("4", "High"), ("5", "Very High"),
+        ],
+        "Dalc": [
+            ("1", "Very Low"), ("2", "Low"), ("3", "Medium"),
+            ("4", "High"), ("5", "Very High"),
+        ],
+        "Walc": [
+            ("1", "Very Low"), ("2", "Low"), ("3", "Medium"),
+            ("4", "High"), ("5", "Very High"),
+        ],
+        "health": [
+            ("1", "Very Bad"), ("2", "Bad"), ("3", "Normal"),
+            ("4", "Good"), ("5", "Very Good"),
+        ],
+    }
+
+    for field, expected in expected_options.items():
+        option_markup = selects[field]
+        actual = [
+            (value, html.unescape(re.sub(r"<[^>]+>", "", label)).strip())
+            for value, label in re.findall(
+                r'<option\s+value="([^"]+)"[^>]*>(.*?)</option>', option_markup, re.DOTALL
+            )
+        ]
+        assert actual == expected, f"Unexpected option values or labels for bm_{field}"
+
+    for option_markup in selects.values():
+        labels = re.findall(r"<option\b[^>]*>(.*?)</option>", option_markup, re.DOTALL)
+        for label in labels:
+            visible_label = html.unescape(re.sub(r"<[^>]+>", "", label)).strip()
+            assert not re.match(r"^\d+\s*:", visible_label), visible_label
+
+    benchmark_script = (FRONTEND_DIR / "js" / "benchmark-prediction.js").read_text(encoding="utf-8")
+    for field in ("studytime", "Medu", "Fedu", "traveltime", "famrel", "freetime",
+                  "goout", "Dalc", "Walc", "health"):
+        assert f'{field}: parseInt(document.getElementById("bm_{field}").value)' in benchmark_script
+
+
+def test_benchmark_marks_selector_preserves_numeric_g1_payload():
+    """Verify marks choices, required reset state, presets, and numeric G1 conversion."""
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+    marks_field = re.search(
+        r'<label for="bm_G1">(.*?)</label>\s*(<select id="bm_G1".*?</select>)\s*'
+        r'<span class="help-hint">(.*?)</span>',
+        content,
+        re.DOTALL,
+    )
+    assert marks_field is not None
+    label, selector, helper = marks_field.groups()
+    assert label == "Term-1 Exam Marks *"
+    assert 'required' in selector
+    assert '<option value="" selected disabled>Select marks...</option>' in selector
+    options = re.findall(r'<option value="(\d+)">(.*?)</option>', selector)
+    assert options == [
+        (str(mark), f"{mark} {'mark' if mark == 1 else 'marks'}")
+        for mark in range(21)
+    ]
+    assert helper == "Scale: 0–20 marks; below 10 indicates failing in the benchmark dataset."
+
+    benchmark_script = (FRONTEND_DIR / "js" / "benchmark-prediction.js").read_text(encoding="utf-8")
+    assert 'G1: parseFloat(document.getElementById("bm_G1").value)' in benchmark_script
+    for preset_value in ("G1: 4.0", "G1: 18.0", "G1: 11.0"):
+        assert preset_value in benchmark_script
+    assert 'if (el) el.value = value;' in benchmark_script
+    assert 'document.getElementById("benchmarkForm").reset();' in benchmark_script
 
 
 def test_pydantic_schema_field_parity():
