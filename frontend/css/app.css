@@ -683,6 +683,36 @@
             color: var(--danger);
         }
 
+        .student-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .student-detail-label,
+        .student-detail-value {
+            margin: 0;
+        }
+
+        .student-detail-label {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .student-detail-value {
+            overflow-wrap: anywhere;
+            font-weight: 500;
+        }
+
+        .student-details-error {
+            color: var(--danger);
+            margin-top: 12px;
+        }
+
         .dashboard-retry {
             margin-top: 8px;
             padding: 4px 10px;

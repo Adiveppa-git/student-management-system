@@ -1,10 +1,29 @@
 // PART 1: Existing Student CRUD Logic (Preserved 100%)
 // =========================================================================
 let editUSN = null;
+let successMessageTimeout;
+
+function clearSuccessMessage() {
+    const successMessage = document.getElementById("studentSuccessMessage");
+    successMessage.textContent = "";
+    successMessage.hidden = true;
+    window.clearTimeout(successMessageTimeout);
+}
+
+function showSuccessMessage(message) {
+    const successMessage = document.getElementById("studentSuccessMessage");
+    successMessage.textContent = message;
+    successMessage.hidden = false;
+
+    successMessageTimeout = window.setTimeout(() => {
+        successMessage.hidden = true;
+    }, 4500);
+}
 
 // Add / Update
 document.getElementById("studentForm").onsubmit = async (e) => {
     e.preventDefault();
+    clearSuccessMessage();
 
     const nameInput = document.getElementById("name");
     const usnInput = document.getElementById("usn");
@@ -35,11 +54,7 @@ document.getElementById("studentForm").onsubmit = async (e) => {
                 return;
             }
 
-            alert("Updated ✅");
-            editUSN = null;
-            submitBtn.textContent = "Add Student";
-            submitBtn.className = "addBtn";
-            window.location.href = "students.html";
+            showSuccessMessage("Student updated successfully! ✅");
             return;
         } else {
             const res = await fetch(API, {
@@ -54,7 +69,7 @@ document.getElementById("studentForm").onsubmit = async (e) => {
                 return;
             }
 
-            alert("Added ✅");
+            showSuccessMessage("Student registered successfully! ✅");
         }
 
         document.getElementById("studentForm").reset();
@@ -92,4 +107,3 @@ async function loadStudentForEdit() {
 }
 
 window.addEventListener("DOMContentLoaded", loadStudentForEdit);
-

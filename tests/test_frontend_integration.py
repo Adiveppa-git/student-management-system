@@ -45,12 +45,17 @@ def test_frontend_static_route_serves_html():
     assert students_response.status_code == 200
     assert 'id="studentList"' in students_response.text
 
+    details_response = client.get("/frontend/student-details.html")
+    assert details_response.status_code == 200
+    assert 'id="studentDetailsContent"' in details_response.text
+
     asset_paths = [
         "/frontend/css/app.css",
         "/frontend/js/api.js",
         "/frontend/js/navigation.js",
         "/frontend/js/student-registration.js",
-        "/frontend/js/students.js",
+        "/frontend/js/students.js?v=3",
+        "/frontend/js/student-details.js",
         "/frontend/js/ai-dashboard.js",
         "/frontend/js/benchmark-prediction.js",
         "/frontend/js/college-dataset-analysis.js",
@@ -103,6 +108,85 @@ def test_existing_student_crud_elements_preserved():
     assert "loadStudentForEdit" in registration_script
     assert 'const tabs = ["dashboard", "benchmark", "analysis"]' in navigation_script
     assert 'id="tab-students"' not in registration_content
+
+
+def test_student_registration_and_update_use_inline_success_feedback():
+    """Verify CRUD success feedback is inline and update keeps the form in place."""
+    registration_content = FRONTEND_FILE.read_text(encoding="utf-8")
+    registration_script = (FRONTEND_DIR / "js" / "student-registration.js").read_text(encoding="utf-8")
+    submit_handler = registration_script.split("// Add / Update", 1)[1].split(
+        "async function loadStudentForEdit", 1
+    )[0]
+    update_handler = registration_script.split("if (editUSN) {", 1)[1].split(
+        "} else {", 1
+    )[0]
+
+    assert 'id="studentSuccessMessage"' in registration_content
+    assert 'class="alert-card success" role="status" aria-live="polite" hidden' in registration_content
+    assert 'src="js/student-registration.js?v=2"' in registration_content
+    assert 'successMessage.textContent = message' in registration_script
+    update_success_path = update_handler.split("if (!res.ok) {", 1)[1].split("return;", 1)[1]
+    assert 'showSuccessMessage("Student updated successfully! ✅")' in update_success_path
+    assert "alert(" not in update_success_path
+    assert "window.location.href" not in update_handler
+    assert ".reset()" not in update_handler
+    assert "clearSuccessMessage();" in submit_handler
+    assert 'showSuccessMessage("Student registered successfully! ✅")' in registration_script
+    assert 'alert("Updated ✅")' not in registration_script
+    assert 'alert("Added ✅")' not in registration_script
+    assert "}, 4500);" in registration_script
+
+
+def test_student_details_page_navigation_and_safe_dom_rendering():
+    """Verify View navigates to the dedicated detail page and renders safe API values."""
+    students_content = STUDENTS_FILE.read_text(encoding="utf-8")
+    student_script = (FRONTEND_DIR / "js" / "students.js").read_text(encoding="utf-8")
+    details_content = (FRONTEND_DIR / "student-details.html").read_text(encoding="utf-8")
+    details_script = (FRONTEND_DIR / "js" / "student-details.js").read_text(encoding="utf-8")
+    view_handler = student_script.split("function viewStudent(student) {", 1)[1].split(
+        "async function deleteStudent", 1
+    )[0]
+
+    assert 'href="index.html">🏠 Back to Dashboard</a>' in students_content
+    assert 'id="studentDetailsPanel"' not in students_content
+    assert students_content.count('src="js/students.js?v=3"') == 1
+    assert students_content.count("students.js") == 1
+    assert student_script.count("function viewStudent(") == 1
+    assert student_script.count('createStudentAction("View", "viewBtn", () => viewStudent(student))') == 1
+    assert "alert(" not in view_handler
+    assert "student-details.html?usn=${encodeURIComponent(student.usn)}" in view_handler
+    assert 'href="students.html">👥 Back to Student List</a>' in details_content
+    assert 'href="index.html">🏠 Back to Dashboard</a>' in details_content
+    assert 'id="studentDetailsStatus"' in details_content
+    assert 'id="studentDetailsContent"' in details_content
+    assert details_content.count('src="js/student-details.js"') == 1
+    assert 'fetch(`${API}/${encodeURIComponent(usn)}`)' in details_script
+    assert "student.attendance_pct" in details_script
+    assert "student.previous_gpa" in details_script
+    assert "student.backlog_count" in details_script
+    assert 'description.textContent = value == null || value === "" ? "Not available" : String(value)' in details_script
+    assert ".innerHTML" not in student_script
+    assert ".innerHTML" not in details_script
+
+
+def test_student_page_navigation_links_are_exact():
+    """Ensure the list and details pages expose only their intended navigation links."""
+    students_content = STUDENTS_FILE.read_text(encoding="utf-8")
+    details_content = (FRONTEND_DIR / "student-details.html").read_text(encoding="utf-8")
+
+    assert students_content.count("<header") == 1
+    assert students_content.count("<nav") == 1
+    assert students_content.count('class="tab-btn') == 1
+    assert 'href="index.html">🏠 Back to Dashboard</a>' in students_content
+    assert 'href="students.html" aria-current="page">👥 View Students</a>' not in students_content
+    assert "Student Registration" not in students_content
+
+    assert details_content.count("<header") == 1
+    assert details_content.count("<nav") == 1
+    assert details_content.count('class="tab-btn') == 2
+    assert 'href="students.html">👥 Back to Student List</a>' in details_content
+    assert 'href="index.html">🏠 Back to Dashboard</a>' in details_content
+    assert "Student Registration" not in details_content
 
 
 def test_student_update_encodes_usn_path_segment():
