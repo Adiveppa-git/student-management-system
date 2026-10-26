@@ -37,6 +37,32 @@ function appendBadge(container, value, className) {
     container.appendChild(badge);
 }
 
+function appendRiskRecommendations(row, recommendations) {
+    const cell = appendTextCell(row, "");
+    const items = Array.isArray(recommendations)
+        ? recommendations.filter(item =>
+            item
+            && typeof item.recommendation === "string"
+            && item.recommendation.trim()
+            && typeof item.reason === "string"
+            && item.reason.trim()
+        )
+        : [];
+
+    if (items.length === 0) {
+        cell.textContent = "No intervention indicated by the screening rules.";
+        return;
+    }
+
+    const list = document.createElement("ul");
+    for (const item of items) {
+        const listItem = document.createElement("li");
+        listItem.textContent = `${item.recommendation} Reason: ${item.reason}`;
+        list.appendChild(listItem);
+    }
+    cell.appendChild(list);
+}
+
 function appendEmptyNote(container, message) {
     const note = document.createElement("span");
     note.className = "analysis-empty-note";
@@ -165,6 +191,7 @@ function applyStudentRiskFilters() {
         appendTextCell(row, Array.isArray(record.main_risk_factors)
             ? record.main_risk_factors.join(", ")
             : "");
+        appendRiskRecommendations(row, record.intervention_recommendations);
         tableBody.appendChild(row);
     }
 

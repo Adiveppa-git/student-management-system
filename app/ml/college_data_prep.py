@@ -41,6 +41,67 @@ SAFE_PSEUDONYM_PATTERN = re.compile(
 )
 
 
+def _student_intervention_recommendations(
+    observation: CollegeAcademicObservation, record: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    """Suggest actions only for the indicators present in a validated observation."""
+    recommendations: List[Dict[str, str]] = []
+    attendance = observation.attendance_pct
+    cie_percentage = observation.normalized_cie_pct
+
+    if attendance < 75:
+        recommendations.append({
+            "recommendation": (
+                "Agree an attendance recovery plan with the faculty advisor and prioritize scheduled classes."
+            ),
+            "reason": (
+                f"Recorded attendance is {attendance:.1f}%, below the 75% screening threshold."
+            ),
+        })
+    elif attendance <= 85:
+        recommendations.append({
+            "recommendation": (
+                "Set weekly attendance targets with the faculty advisor and review progress."
+            ),
+            "reason": (
+                f"Recorded attendance is {attendance:.1f}%, within the 75–85% moderate screening range."
+            ),
+        })
+
+    if cie_percentage < 40:
+        recommendations.append({
+            "recommendation": (
+                "Plan targeted practice and revision for current course topics, then review progress with faculty."
+            ),
+            "reason": (
+                f"Normalized CIE is {cie_percentage:.1f}%, below the 40% screening threshold."
+            ),
+        })
+    elif cie_percentage <= 60:
+        recommendations.append({
+            "recommendation": (
+                "Plan additional practice for current course topics and request faculty feedback."
+            ),
+            "reason": (
+                f"Normalized CIE is {cie_percentage:.1f}%, within the 40–60% moderate screening range."
+            ),
+        })
+
+    backlog_value = record.get("active_backlogs")
+    if backlog_value is not None and int(backlog_value) > 0:
+        backlog_count = int(backlog_value)
+        recommendations.append({
+            "recommendation": (
+                "Arrange faculty mentoring to prioritize backlog subjects and agree on a manageable study schedule."
+            ),
+            "reason": (
+                f"{backlog_count} active backlog{'s' if backlog_count != 1 else ''} recorded."
+            ),
+        })
+
+    return recommendations
+
+
 def analyze_student_risk_screening(raw_records: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Build a preliminary, non-validated risk screen from each student's latest valid observation."""
     latest_by_student: Dict[str, Tuple[int, Dict[str, Any], CollegeAcademicObservation]] = {}
@@ -100,6 +161,11 @@ def analyze_student_risk_screening(raw_records: List[Dict[str, Any]]) -> Dict[st
             "cie_max_marks": observation.cie_max_marks,
             "risk_category": category,
             "main_risk_factors": risk_factors,
+            "intervention_recommendations": (
+                _student_intervention_recommendations(observation, record)
+                if category in ("At Risk", "Moderate Risk")
+                else []
+            ),
         })
 
     counts = {category: 0 for category in STUDENT_RISK_CATEGORIES}

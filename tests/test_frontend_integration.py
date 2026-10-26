@@ -713,6 +713,7 @@ def test_student_risk_analysis_ui_filters_empty_state_and_safe_rendering():
     for column in (
         "Student Reference", "Branch", "Academic Year", "Semester",
         "Attendance Percentage", "CIE Marks", "Risk Category", "Main Risk Factors",
+        "Intervention Recommendations",
     ):
         assert f"<th>{column}</th>" in content
     assert "Preliminary, rule-based screening only" in content
@@ -720,6 +721,7 @@ def test_student_risk_analysis_ui_filters_empty_state_and_safe_rendering():
     assert "cell.textContent = value ?? \"\"" in analysis_script
     assert "appendTextCell(row, record.student_ref)" in analysis_script
     assert "appendTextCell(row, record.branch)" in analysis_script
+    assert "appendRiskRecommendations(row, record.intervention_recommendations)" in analysis_script
     assert ".innerHTML" not in analysis_script
 
     node = shutil.which("node")
@@ -743,10 +745,43 @@ const noMatches = filterStudentRiskRecords(records, {
 if (noMatches.length !== 0) {
     throw new Error("Non-matching filters should return an empty result");
 }
+const makeNode = () => ({
+    children: [],
+    appendChild(child) { this.children.push(child); },
+    set textContent(value) { this.text = value; },
+    get textContent() { return this.text || ""; }
+});
+global.document.createElement = () => makeNode();
+const recommendationRow = makeNode();
+appendRiskRecommendations(recommendationRow, [{
+    recommendation: "Request faculty support.",
+    reason: "CIE is below the screening threshold."
+}]);
+const renderedCell = recommendationRow.children[0];
+if (!renderedCell.children[0].children[0].textContent.includes("Reason: CIE is below the screening threshold.")) {
+    throw new Error("Recommendation and its reason were not rendered as text");
+}
+const untrustedRow = makeNode();
+appendRiskRecommendations(untrustedRow, [{
+    recommendation: "<img src=x>",
+    reason: "<script>not executable</script>"
+}]);
+const untrustedText = untrustedRow.children[0].children[0].children[0].textContent;
+if (untrustedText !== "<img src=x> Reason: <script>not executable</script>") {
+    throw new Error("Recommendation content must remain plain text");
+}
+const emptyRecommendationRow = makeNode();
+appendRiskRecommendations(emptyRecommendationRow, [{
+    recommendation: "<img src=x onerror=alert(1)>",
+    reason: null
+}]);
+if (emptyRecommendationRow.children[0].textContent !== "No intervention indicated by the screening rules.") {
+    throw new Error("Missing recommendation data should use a safe fallback");
+}
 """
     harness = f"""
 const source = {json.dumps(analysis_script)};
-global.document = {{ addEventListener() {{}} }};
+global.document = {{ addEventListener() {{}}, createElement() {{ return {{}}; }} }};
 eval(source + {json.dumps(runtime_test)});
 """
     result = subprocess.run([node, "-e", harness], capture_output=True, text=True, check=False)

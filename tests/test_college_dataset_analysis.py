@@ -230,6 +230,15 @@ def test_student_risk_screening_latest_observation_and_optional_columns():
     assert latest["semester"] == 3
     assert latest["risk_category"] == "Good"
     assert all("Active backlogs" not in ", ".join(row["main_risk_factors"]) for row in result["records"])
+    moderate = next(row for row in result["records"] if row["student_ref"] == "ANON_002")
+    assert moderate["risk_category"] == "Moderate Risk"
+    assert len(moderate["intervention_recommendations"]) == 2
+    assert all(
+        "backlog" not in item["reason"].lower()
+        for item in moderate["intervention_recommendations"]
+    )
+    good = next(row for row in result["records"] if row["student_ref"] == "ANON_003")
+    assert good["intervention_recommendations"] == []
 
 
 def test_student_risk_screening_empty_dataset_has_zero_counts():
@@ -264,6 +273,52 @@ def test_empty_student_risk_analysis_endpoint_response():
     data = response.json()["student_risk_analysis"]
     assert data["total_students"] == 0
     assert data["records"] == []
+
+
+def test_analysis_api_returns_indicator_based_intervention_recommendations():
+    csv_text = "\n".join([
+        "student_ref,branch,academic_year,semester,attendance_pct,cie_marks_obtained,cie_max_marks,active_backlogs",
+        "ANON_AT_RISK,CSE,2,3,68.0,15.0,50.0,2",
+        "ANON_MODERATE,ISE,2,3,80.0,25.0,50.0,0",
+        "ANON_INVALID,ECE,2,3,110.0,20.0,50.0,1",
+    ])
+    response = client.post(
+        "/api/ai/college/analyze-dataset",
+        files={"file": ("intervention_cohort.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+
+    assert response.status_code == 200
+    analysis = response.json()["student_risk_analysis"]
+    assert analysis["total_students"] == 2
+    records = {record["student_ref"]: record for record in analysis["records"]}
+
+    at_risk = records["ANON_AT_RISK"]
+    assert at_risk["risk_category"] == "At Risk"
+    assert len(at_risk["intervention_recommendations"]) == 3
+    assert any(
+        "attendance is 68.0%" in item["reason"]
+        for item in at_risk["intervention_recommendations"]
+    )
+    assert any(
+        "CIE is 30.0%" in item["reason"]
+        for item in at_risk["intervention_recommendations"]
+    )
+    assert any(
+        item["reason"] == "2 active backlogs recorded."
+        for item in at_risk["intervention_recommendations"]
+    )
+
+    moderate = records["ANON_MODERATE"]
+    assert moderate["risk_category"] == "Moderate Risk"
+    assert len(moderate["intervention_recommendations"]) == 2
+    assert all(
+        item["recommendation"] and item["reason"]
+        for item in moderate["intervention_recommendations"]
+    )
+    assert all(
+        "backlog" not in item["reason"].lower()
+        for item in moderate["intervention_recommendations"]
+    )
 
 
 def test_analyze_csv_critical_missing_values_blocks_readiness():
