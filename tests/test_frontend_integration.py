@@ -15,6 +15,7 @@ import json
 import re
 import shutil
 import subprocess
+import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
@@ -26,6 +27,24 @@ client = TestClient(app)
 FRONTEND_FILE = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 FRONTEND_DIR = FRONTEND_FILE.parent
 STUDENTS_FILE = FRONTEND_DIR / "students.html"
+
+
+def run_node_script(node, source, runtime_test):
+    """Run an inline frontend test from a temporary script to avoid Windows command-line limits."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        script_path = Path(temp_dir) / "frontend-test.js"
+        script_path.write_text(
+            "global.document = { addEventListener() {} };\n"
+            f"{source}\n{runtime_test}",
+            encoding="utf-8",
+        )
+        return subprocess.run(
+            [node, str(script_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
 
 # The 31 exact feature names required by UCIBenchmarkStudentInput
 REQUIRED_31_FEATURES = [
@@ -708,8 +727,11 @@ def test_student_risk_analysis_ui_filters_empty_state_and_safe_rendering():
         "studentRiskSemesterFilter",
         "studentRiskSearch",
         "studentRiskTableBody",
+        "exportStudentRiskCsv",
+        "studentRiskExportStatus",
     ):
         assert f'id="{element_id}"' in content
+    assert "Export filtered results to CSV" in content
     for column in (
         "Student Reference", "Branch", "Academic Year", "Semester",
         "Attendance Percentage", "CIE Marks", "Risk Category", "Main Risk Factors",
@@ -779,12 +801,157 @@ if (emptyRecommendationRow.children[0].textContent !== "No intervention indicate
     throw new Error("Missing recommendation data should use a safe fallback");
 }
 """
-    harness = f"""
-const source = {json.dumps(analysis_script)};
-global.document = {{ addEventListener() {{}}, createElement() {{ return {{}}; }} }};
-eval(source + {json.dumps(runtime_test)});
+    result = run_node_script(node, analysis_script, runtime_test)
+    assert result.returncode == 0, result.stderr
+
+
+def test_student_risk_csv_export_filters_escapes_and_blocks_empty_results():
+    """Verify filtered CSV downloads, field escaping, formula protection, and empty-result handling."""
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+    analysis_script = (FRONTEND_DIR / "js" / "college-dataset-analysis.js").read_text(encoding="utf-8")
+    assert 'id="exportStudentRiskCsv"' in content
+    assert "getFilteredStudentRiskRecords()" in analysis_script
+    assert "buildStudentRiskCsv(records)" in analysis_script
+    assert "No student records match the selected filters" in analysis_script
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is required for student risk CSV export verification.")
+    runtime_test = r"""
+const records = [
+    {
+        student_ref: "ANON_A1",
+        branch: 'CSE, "North"\nCampus',
+        academic_year: 2,
+        semester: 3,
+        attendance_pct: 68,
+        cie_marks_obtained: 15,
+        cie_max_marks: 50,
+        risk_category: "At Risk",
+        main_risk_factors: ["=SUM(1,1)", "Attendance below 75%, urgent", 'CIE "low"\nreview'],
+        intervention_recommendations: [{
+            recommendation: "+Arrange practice",
+            reason: "Attendance < 75%"
+        }]
+    },
+    {
+        student_ref: "ANON_B2",
+        branch: "ISE",
+        academic_year: 2,
+        semester: 3,
+        attendance_pct: 80,
+        cie_marks_obtained: 25,
+        cie_max_marks: 50,
+        risk_category: "Moderate Risk",
+        main_risk_factors: ["Attendance 75–85%"],
+        intervention_recommendations: []
+    },
+    {
+        student_ref: "ANON_C3",
+        branch: "CSE",
+        academic_year: 2,
+        semester: 4,
+        attendance_pct: 95,
+        cie_marks_obtained: 45,
+        cie_max_marks: 50,
+        risk_category: "Good",
+        main_risk_factors: [],
+        intervention_recommendations: []
+    }
+];
+const elements = {
+    studentRiskCategoryFilter: {value: "At Risk"},
+    studentRiskBranchFilter: {value: 'CSE, "North"\nCampus'},
+    studentRiskSemesterFilter: {value: "3"},
+    studentRiskSearch: {value: "anon"},
+    studentRiskExportStatus: {textContent: ""}
+};
+let createdBlob = null;
+let downloadedLink = null;
+let objectUrlCount = 0;
+global.document = {
+    addEventListener() {},
+    getElementById(id) { return elements[id]; },
+    createElement(tag) {
+        if (tag !== "a") throw new Error("Unexpected export element");
+        return {
+            click() { downloadedLink = this; }
+        };
+    }
+};
+global.Blob = class {
+    constructor(parts, options) {
+        this.parts = parts;
+        this.options = options;
+        createdBlob = this;
+    }
+};
+global.setTimeout = callback => callback();
+global.URL.createObjectURL = blob => {
+    objectUrlCount += 1;
+    if (blob !== createdBlob) throw new Error("Unexpected Blob passed to download");
+    return "blob:student-risk";
+};
+global.URL.revokeObjectURL = url => {
+    if (url !== "blob:student-risk") throw new Error("Unexpected download URL revoked");
+};
+studentRiskRecords = records;
+exportFilteredStudentRiskRecords();
+if (!downloadedLink || downloadedLink.download !== "student-risk-report.csv") {
+    throw new Error("Expected a named CSV download");
+}
+if (createdBlob.options.type !== "text/csv;charset=utf-8") {
+    throw new Error("CSV download should use a UTF-8 CSV content type");
+}
+const csv = createdBlob.parts[0];
+if (!csv.includes('"\'=SUM(1,1); Attendance below 75%, urgent; CIE ""low""\nreview"')) {
+    throw new Error("Formula-triggering risk factors and CSV field content must be protected");
+}
+if (!csv.includes('"CSE, ""North""\nCampus"')) {
+    throw new Error("CSV commas, quotes, and newlines must be escaped");
+}
+if (!csv.includes('Attendance below 75%, urgent; CIE ""low""\nreview')) {
+    throw new Error("Risk factors must be included and correctly escaped");
+}
+if (!csv.includes(`"'+Arrange practice Reason: Attendance < 75%"`)) {
+    throw new Error("Recommendation text should be formula-protected and exported");
+}
+if (csv.includes("ANON_B2") || csv.includes("ANON_C3")) {
+    throw new Error("Export must respect active risk, branch, semester, and search filters");
+}
+if (!csv.split("\r\n").at(-1).includes('"At Risk"')) {
+    throw new Error("CSV should include the risk category and one filtered record");
+}
+for (const prefix of ["=", "+", "-", "@"]) {
+    if (escapeCsvField(`${prefix}FORMULA`, true) !== `"\'${prefix}FORMULA"`) {
+        throw new Error(`Formula prefix ${prefix} was not neutralized`);
+    }
+}
+const escapedQuote = buildStudentRiskCsv([{
+    student_ref: "ANON_Q",
+    branch: "CSE",
+    academic_year: 1,
+    semester: 1,
+    attendance_pct: 90,
+    cie_marks_obtained: 45,
+    cie_max_marks: 50,
+    risk_category: "Good",
+    main_risk_factors: ['Quoted "factor"'],
+    intervention_recommendations: []
+}]);
+if (!escapedQuote.includes('"Quoted ""factor' + '"'.repeat(3))) {
+    throw new Error("Double quotes inside a field must be doubled");
+}
+elements.studentRiskSearch.value = "missing";
+exportFilteredStudentRiskRecords();
+if (objectUrlCount !== 1 || !elements.studentRiskExportStatus.textContent.includes("no CSV report was generated")) {
+    throw new Error("Empty filtered results must not generate a CSV download");
+}
+if (buildStudentRiskCsv([]) !== null) {
+    throw new Error("An empty record set must not produce a report");
+}
 """
-    result = subprocess.run([node, "-e", harness], capture_output=True, text=True, check=False)
+    result = run_node_script(node, analysis_script, runtime_test)
     assert result.returncode == 0, result.stderr
 
 

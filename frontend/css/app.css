@@ -415,6 +415,14 @@
             font: inherit;
         }
 
+        .student-risk-export {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
         .student-risk-table-wrapper {
             overflow-x: auto;
         }

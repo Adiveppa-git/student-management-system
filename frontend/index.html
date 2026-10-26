@@ -651,6 +651,12 @@
                         <input id="studentRiskSearch" type="search" placeholder="Search reference">
                     </label>
                 </div>
+                <div class="student-risk-export">
+                    <button id="exportStudentRiskCsv" class="addBtn" type="button" disabled>
+                        Export filtered results to CSV
+                    </button>
+                    <span id="studentRiskExportStatus" role="status" aria-live="polite"></span>
+                </div>
 
                 <div class="data-table-wrapper student-risk-table-wrapper">
                     <table class="data-table student-risk-table" aria-label="Preliminary student academic risk screening">

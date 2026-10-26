@@ -15,6 +15,58 @@ function filterStudentRiskRecords(records, filters) {
     );
 }
 
+function escapeCsvField(value, isText = false) {
+    let field = value == null ? "" : String(value);
+    if (isText && /^[\t\r\n ]*[=+\-@]/.test(field)) {
+        field = `'${field}`;
+    }
+    return `"${field.replace(/"/g, '""')}"`;
+}
+
+function buildStudentRiskCsv(records) {
+    if (!Array.isArray(records) || records.length === 0) return null;
+
+    const headers = [
+        "Student Reference",
+        "Branch",
+        "Academic Year",
+        "Semester",
+        "Attendance Percentage",
+        "CIE Marks Obtained",
+        "CIE Maximum Marks",
+        "Risk Category",
+        "Main Risk Factors",
+        "Intervention Recommendations",
+    ];
+    const rows = records.map(record => {
+        const recommendations = Array.isArray(record.intervention_recommendations)
+            ? record.intervention_recommendations
+                .filter(item =>
+                    item
+                    && typeof item.recommendation === "string"
+                    && typeof item.reason === "string"
+                )
+                .map(item => `${item.recommendation} Reason: ${item.reason}`)
+                .join("\n")
+            : "";
+        const fields = [
+            [record.student_ref, true],
+            [record.branch, true],
+            [record.academic_year, false],
+            [record.semester, false],
+            [record.attendance_pct, false],
+            [record.cie_marks_obtained, false],
+            [record.cie_max_marks, false],
+            [record.risk_category, true],
+            [Array.isArray(record.main_risk_factors) ? record.main_risk_factors.join("; ") : "", true],
+            [recommendations, true],
+        ];
+        return fields.map(([value, isText]) => escapeCsvField(value, isText)).join(",");
+    });
+
+    return [headers.map(header => escapeCsvField(header)).join(","), ...rows].join("\r\n");
+}
+
 function appendTextCell(row, value, className = "") {
     const cell = document.createElement("td");
     if (className) cell.className = className;
@@ -110,6 +162,8 @@ function resetStudentRiskAnalysis() {
         "Dataset readiness is assessed separately below.";
     document.getElementById("studentRiskTableBody").replaceChildren();
     document.getElementById("studentRiskNoRows").hidden = true;
+    document.getElementById("exportStudentRiskCsv").disabled = true;
+    document.getElementById("studentRiskExportStatus").textContent = "";
     document.getElementById("studentRiskCategoryFilter").value = "";
     document.getElementById("studentRiskSearch").value = "";
     document.getElementById("studentRiskBranchFilter").replaceChildren(
@@ -155,13 +209,7 @@ function renderStudentRiskAnalysis(analysis = {}) {
 }
 
 function applyStudentRiskFilters() {
-    const filters = {
-        category: document.getElementById("studentRiskCategoryFilter").value,
-        branch: document.getElementById("studentRiskBranchFilter").value,
-        semester: document.getElementById("studentRiskSemesterFilter").value,
-        search: document.getElementById("studentRiskSearch").value,
-    };
-    const filteredRecords = filterStudentRiskRecords(studentRiskRecords, filters);
+    const filteredRecords = getFilteredStudentRiskRecords();
     const tableBody = document.getElementById("studentRiskTableBody");
     tableBody.replaceChildren();
 
@@ -196,6 +244,42 @@ function applyStudentRiskFilters() {
     }
 
     document.getElementById("studentRiskNoRows").hidden = filteredRecords.length > 0;
+    const exportButton = document.getElementById("exportStudentRiskCsv");
+    exportButton.disabled = filteredRecords.length === 0;
+    document.getElementById("studentRiskExportStatus").textContent =
+        filteredRecords.length === 0
+            ? "No student records match the selected filters; no CSV report is available."
+            : `${filteredRecords.length} filtered student record${filteredRecords.length === 1 ? "" : "s"} ready to export.`;
+}
+
+function getFilteredStudentRiskRecords() {
+    const filters = {
+        category: document.getElementById("studentRiskCategoryFilter").value,
+        branch: document.getElementById("studentRiskBranchFilter").value,
+        semester: document.getElementById("studentRiskSemesterFilter").value,
+        search: document.getElementById("studentRiskSearch").value,
+    };
+    return filterStudentRiskRecords(studentRiskRecords, filters);
+}
+
+function exportFilteredStudentRiskRecords() {
+    const records = getFilteredStudentRiskRecords();
+    const csv = buildStudentRiskCsv(records);
+    const statusElement = document.getElementById("studentRiskExportStatus");
+    if (!csv) {
+        statusElement.textContent = "No student records match the selected filters; no CSV report was generated.";
+        return;
+    }
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = "student-risk-report.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    statusElement.textContent =
+        `Exported ${records.length} filtered student record${records.length === 1 ? "" : "s"} to CSV.`;
 }
 
 function loadDemoCohort(type) {
@@ -593,6 +677,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("analyzeDatasetBtn")?.addEventListener("click", submitCollegeAnalysis);
     document.getElementById("clearAnalysisView")?.addEventListener("click", clearAnalysisView);
+    document.getElementById("exportStudentRiskCsv")?.addEventListener("click", exportFilteredStudentRiskRecords);
     [
         "studentRiskCategoryFilter",
         "studentRiskBranchFilter",
