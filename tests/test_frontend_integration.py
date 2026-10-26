@@ -955,6 +955,98 @@ if (buildStudentRiskCsv([]) !== null) {
     assert result.returncode == 0, result.stderr
 
 
+def test_student_risk_progress_view_orders_history_and_explains_single_observations():
+    content = FRONTEND_FILE.read_text(encoding="utf-8")
+    analysis_script = (FRONTEND_DIR / "js" / "college-dataset-analysis.js").read_text(encoding="utf-8")
+    for element_id in (
+        "studentRiskProgressTitle",
+        "studentRiskProgressNote",
+        "studentRiskProgressTableBody",
+        "studentRiskProgressEmpty",
+    ):
+        assert f'id="{element_id}"' in content
+    assert "renderStudentRiskProgress(filteredRecords)" in analysis_script
+    assert "session-only" in analysis_script
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is required for student risk history rendering verification.")
+    runtime_test = r"""
+const makeNode = () => ({
+    children: [],
+    hidden: false,
+    appendChild(child) { this.children.push(child); },
+    replaceChildren(...children) { this.children = children; },
+    set textContent(value) {
+        this.text = value;
+        this.children = [];
+    },
+    get textContent() { return this.text || ""; }
+});
+const elements = {
+    studentRiskProgressTableBody: makeNode(),
+    studentRiskProgressEmpty: makeNode(),
+    studentRiskProgressNote: makeNode()
+};
+global.document = {
+    getElementById(id) { return elements[id]; },
+    createElement() { return makeNode(); }
+};
+const historyRecord = {
+    student_ref: "ANON_HISTORY_01",
+    assessment_history: [
+        {
+            academic_year: 1, semester: 1, attendance_pct: 60,
+            cie_marks_obtained: 15, cie_max_marks: 50, normalized_cie_pct: 30,
+            risk_category: "At Risk", duplicate_observations_count: 1,
+            comparison: {available: false, reason: "No earlier observation."}
+        },
+        {
+            academic_year: 1, semester: 2, attendance_pct: 80,
+            cie_marks_obtained: 25, cie_max_marks: 50, normalized_cie_pct: 50,
+            risk_category: "Moderate Risk", duplicate_observations_count: 1,
+            comparison: {
+                available: true,
+                compared_to: {academic_year: 1, semester: 1},
+                attendance: {direction: "Improving", previous_pct: 60},
+                cie: {available: true, direction: "Improving", previous_pct: 30},
+                risk_category: {direction: "Improving", previous: "At Risk", current: "Moderate Risk"}
+            }
+        }
+    ]
+};
+renderStudentRiskProgress([historyRecord]);
+const rows = elements.studentRiskProgressTableBody.children;
+if (rows.length !== 2 || !rows[0].children[1].textContent.includes("Semester 1") ||
+    !rows[1].children[1].textContent.includes("Semester 2")) {
+    throw new Error("Student history must be rendered in academic-period order");
+}
+if (!rows[1].children[3].textContent.includes("Improving") ||
+    !rows[1].children[7].textContent.includes("At Risk → Moderate Risk")) {
+    throw new Error("Attendance trend and risk-category change should be visible");
+}
+if (elements.studentRiskProgressEmpty.hidden !== true) {
+    throw new Error("Non-empty student history must hide the empty state");
+}
+renderStudentRiskProgress([{
+    student_ref: "ANON_SINGLE",
+    assessment_history: [historyRecord.assessment_history[0]]
+}]);
+if (!elements.studentRiskProgressNote.textContent.includes("only one distinct valid academic period")) {
+    throw new Error("Single-assessment history should explain that more periods are needed");
+}
+if (elements.studentRiskProgressTableBody.children.length !== 1) {
+    throw new Error("A single assessment should still display the current result");
+}
+renderStudentRiskProgress([]);
+if (elements.studentRiskProgressEmpty.hidden !== false) {
+    throw new Error("No matching students should display the progress empty state");
+}
+"""
+    result = run_node_script(node, analysis_script, runtime_test)
+    assert result.returncode == 0, result.stderr
+
+
 def test_phase_9_frontend_hardening_and_clarity():
     """Verify Phase 9 frontend hardening: demo vs real provenance banner, readiness note, and accessibility."""
     content = FRONTEND_FILE.read_text(encoding="utf-8")

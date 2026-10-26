@@ -102,71 +102,190 @@ def _student_intervention_recommendations(
     return recommendations
 
 
+def _assess_student_observation(
+    row_index: int,
+    record: Dict[str, Any],
+    observation: CollegeAcademicObservation,
+) -> Dict[str, Any]:
+    """Apply the existing screening rules to one validated semester observation."""
+    cie_percentage = observation.normalized_cie_pct
+    cie_max_marks_provided = record.get("cie_max_marks") is not None
+    strong_factors = []
+    moderate_factors = []
+
+    if observation.attendance_pct < 75:
+        strong_factors.append("Attendance below 75%")
+    if cie_percentage < 40:
+        strong_factors.append("CIE below 40%")
+    backlog_value = record.get("active_backlogs")
+    if backlog_value is not None and int(backlog_value) > 0:
+        strong_factors.append(f"Active backlogs: {int(backlog_value)}")
+
+    if 75 <= observation.attendance_pct <= 85:
+        moderate_factors.append("Attendance 75–85%")
+    if 40 <= cie_percentage <= 60:
+        moderate_factors.append("CIE 40–60%")
+
+    if strong_factors:
+        category = "At Risk"
+        risk_factors = strong_factors + moderate_factors
+    elif moderate_factors:
+        category = "Moderate Risk"
+        risk_factors = moderate_factors
+    else:
+        category = "Good"
+        risk_factors = ["No screening indicators identified"]
+
+    student_ref = observation.student_ref
+    if not SAFE_PSEUDONYM_PATTERN.fullmatch(student_ref):
+        student_ref = f"Reference withheld ({row_index})"
+
+    return {
+        "student_ref": student_ref,
+        "academic_year": observation.academic_year,
+        "semester": observation.semester,
+        "attendance_pct": observation.attendance_pct,
+        "cie_marks_obtained": observation.cie_marks_obtained,
+        "cie_max_marks": observation.cie_max_marks if cie_max_marks_provided else None,
+        "normalized_cie_pct": cie_percentage if cie_max_marks_provided else None,
+        "risk_category": category,
+        "main_risk_factors": risk_factors,
+        "intervention_recommendations": (
+            _student_intervention_recommendations(observation, record)
+            if category in ("At Risk", "Moderate Risk")
+            else []
+        ),
+    }
+
+
+def _comparison_direction(previous: float, current: float, higher_is_better: bool) -> str:
+    if current == previous:
+        return "Unchanged"
+    improved = current > previous if higher_is_better else current < previous
+    return "Improving" if improved else "Declining"
+
+
+def _compare_student_assessments(
+    previous: Dict[str, Any], current: Dict[str, Any]
+) -> Dict[str, Any]:
+    risk_order = {"At Risk": 2, "Moderate Risk": 1, "Good": 0}
+    previous_risk = previous["risk_category"]
+    current_risk = current["risk_category"]
+    cie_comparison: Dict[str, Any] = {
+        "available": False,
+        "reason": "Explicit CIE maximum marks are not available for both observations.",
+    }
+    if (
+        previous["normalized_cie_pct"] is not None
+        and current["normalized_cie_pct"] is not None
+    ):
+        cie_comparison = {
+            "available": True,
+            "direction": _comparison_direction(
+                previous["normalized_cie_pct"],
+                current["normalized_cie_pct"],
+                higher_is_better=True,
+            ),
+            "previous_pct": previous["normalized_cie_pct"],
+            "current_pct": current["normalized_cie_pct"],
+        }
+    return {
+        "available": True,
+        "compared_to": {
+            "academic_year": previous["academic_year"],
+            "semester": previous["semester"],
+        },
+        "attendance": {
+            "direction": _comparison_direction(
+                previous["attendance_pct"], current["attendance_pct"], higher_is_better=True
+            ),
+            "previous_pct": previous["attendance_pct"],
+            "current_pct": current["attendance_pct"],
+        },
+        "cie": cie_comparison,
+        "risk_category": {
+            "direction": _comparison_direction(
+                risk_order[previous_risk],
+                risk_order[current_risk],
+                higher_is_better=False,
+            ),
+            "previous": previous_risk,
+            "current": current_risk,
+        },
+    }
+
+
 def analyze_student_risk_screening(raw_records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Build a preliminary, non-validated risk screen from each student's latest valid observation."""
-    latest_by_student: Dict[str, Tuple[int, Dict[str, Any], CollegeAcademicObservation]] = {}
+    """Build a preliminary risk screen and in-upload semester history per student."""
+    observations_by_student: Dict[
+        str,
+        Dict[Tuple[int, int], List[Tuple[int, Dict[str, Any], CollegeAcademicObservation]]],
+    ] = {}
     for row_index, record in enumerate(raw_records, start=1):
         observation, _ = validate_college_observation(record)
         if observation is None:
             continue
 
-        existing = latest_by_student.get(observation.student_ref)
+        student_observations = observations_by_student.setdefault(observation.student_ref, {})
         observation_period = (observation.academic_year, observation.semester)
-        if existing is None or observation_period >= (
-            existing[2].academic_year,
-            existing[2].semester,
-        ):
-            latest_by_student[observation.student_ref] = (row_index, record, observation)
+        student_observations.setdefault(observation_period, []).append(
+            (row_index, record, observation)
+        )
 
     risk_rows: List[Dict[str, Any]] = []
-    for row_index, record, observation in latest_by_student.values():
-        cie_percentage = observation.normalized_cie_pct
-        strong_factors = []
-        moderate_factors = []
+    for student_observations in observations_by_student.values():
+        history: List[Dict[str, Any]] = []
+        previous_comparable: Optional[Dict[str, Any]] = None
+        latest_record: Optional[Dict[str, Any]] = None
 
-        if observation.attendance_pct < 75:
-            strong_factors.append("Attendance below 75%")
-        if cie_percentage < 40:
-            strong_factors.append("CIE below 40%")
-        backlog_value = record.get("active_backlogs")
-        if backlog_value is not None and int(backlog_value) > 0:
-            strong_factors.append(f"Active backlogs: {int(backlog_value)}")
+        for period in sorted(student_observations):
+            period_records = student_observations[period]
+            row_index, record, observation = period_records[-1]
+            assessment = _assess_student_observation(row_index, record, observation)
+            assessment["branch"] = observation.branch
+            assessment["duplicate_observations_count"] = len(period_records)
 
-        if 75 <= observation.attendance_pct <= 85:
-            moderate_factors.append("Attendance 75–85%")
-        if 40 <= cie_percentage <= 60:
-            moderate_factors.append("CIE 40–60%")
+            if len(period_records) > 1:
+                assessment["comparison"] = {
+                    "available": False,
+                    "reason": (
+                        f"{len(period_records)} valid observations share this academic period; "
+                        "trend comparison is withheld."
+                    ),
+                }
+            elif previous_comparable is None:
+                assessment["comparison"] = {
+                    "available": False,
+                    "reason": "No earlier distinct, unambiguous valid semester observation is available.",
+                }
+                previous_comparable = assessment
+            else:
+                assessment["comparison"] = _compare_student_assessments(
+                    previous_comparable, assessment
+                )
+                previous_comparable = assessment
 
-        if strong_factors:
-            category = "At Risk"
-            risk_factors = strong_factors + moderate_factors
-        elif moderate_factors:
-            category = "Moderate Risk"
-            risk_factors = moderate_factors
-        else:
-            category = "Good"
-            risk_factors = ["No screening indicators identified"]
+            history.append(assessment)
+            latest_record = {
+                "student_ref": assessment["student_ref"],
+                "branch": assessment["branch"],
+                "academic_year": assessment["academic_year"],
+                "semester": assessment["semester"],
+                "attendance_pct": assessment["attendance_pct"],
+                "cie_marks_obtained": assessment["cie_marks_obtained"],
+                "cie_max_marks": observation.cie_max_marks,
+                "risk_category": assessment["risk_category"],
+                "main_risk_factors": assessment["main_risk_factors"],
+                "intervention_recommendations": assessment["intervention_recommendations"],
+            }
 
-        student_ref = observation.student_ref
-        if not SAFE_PSEUDONYM_PATTERN.fullmatch(student_ref):
-            student_ref = f"Reference withheld ({row_index})"
-
-        risk_rows.append({
-            "student_ref": student_ref,
-            "branch": observation.branch,
-            "academic_year": observation.academic_year,
-            "semester": observation.semester,
-            "attendance_pct": observation.attendance_pct,
-            "cie_marks_obtained": observation.cie_marks_obtained,
-            "cie_max_marks": observation.cie_max_marks,
-            "risk_category": category,
-            "main_risk_factors": risk_factors,
-            "intervention_recommendations": (
-                _student_intervention_recommendations(observation, record)
-                if category in ("At Risk", "Moderate Risk")
-                else []
-            ),
-        })
+        if latest_record is not None:
+            latest_record["assessment_history"] = history
+            latest_record["history_scope"] = (
+                "Session-only history derived from valid academic_year/semester observations "
+                "in the currently analyzed upload; no persistent assessment history is stored."
+            )
+            risk_rows.append(latest_record)
 
     counts = {category: 0 for category in STUDENT_RISK_CATEGORIES}
     for row in risk_rows:
@@ -177,7 +296,9 @@ def analyze_student_risk_screening(raw_records: List[Dict[str, Any]]) -> Dict[st
         "methodology": (
             "Not a validated prediction. At Risk: attendance <75%, normalized CIE <40%, or any recorded active backlog. "
             "Moderate Risk: attendance 75–85% or normalized CIE 40–60%. Good: no listed indicators. "
-            "The latest valid semester observation is used per student; unavailable optional backlog data is ignored."
+            "The latest valid semester observation is used per student. History is derived only from valid "
+            "academic-year/semester observations in the current upload; duplicate periods are excluded from "
+            "trend comparisons, and unavailable optional backlog data is ignored."
         ),
         "total_students": total_students,
         "category_counts": {

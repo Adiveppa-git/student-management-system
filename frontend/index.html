@@ -679,6 +679,36 @@
                         No student records match the selected filters.
                     </div>
                 </div>
+
+                <section class="student-risk-progress" aria-labelledby="studentRiskProgressTitle">
+                    <h3 id="studentRiskProgressTitle">Student Risk History &amp; Progress</h3>
+                    <p id="studentRiskProgressNote" role="status" aria-live="polite">
+                        History is limited to valid academic-year and semester observations in the currently analyzed upload.
+                        A single distinct period shows the current assessment only; additional periods are needed for trends.
+                        CIE trends require explicit maximum marks for both periods.
+                    </p>
+                    <div class="data-table-wrapper student-risk-table-wrapper">
+                        <table class="data-table student-risk-table" aria-label="Student academic risk history and progress">
+                            <thead>
+                                <tr>
+                                    <th>Student Reference</th>
+                                    <th>Academic Period</th>
+                                    <th>Attendance</th>
+                                    <th>Attendance Change</th>
+                                    <th>CIE Marks</th>
+                                    <th>CIE Change</th>
+                                    <th>Risk Category</th>
+                                    <th>Risk Category Change</th>
+                                    <th>Assessment Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentRiskProgressTableBody"></tbody>
+                        </table>
+                        <div id="studentRiskProgressEmpty" class="student-risk-empty" role="status" hidden>
+                            No student history matches the selected risk filters.
+                        </div>
+                    </div>
+                </section>
             </div>
         </section>
 

@@ -504,8 +504,11 @@ Phase 8 extends the college data framework with an in-depth data quality audit, 
 | **Numeric Statistics** | `numeric_summary_statistics` | Quantitative summary for all numeric variables: `count`, `min`, `max`, `mean`, `median`, and `std` dev. |
 | **Cohort Distributions** | `categorical_distributions` | Distribution breakdowns across engineering branches, academic years, semesters, and degree programs. |
 | **Outcomes & Balance**| `outcome_and_class_balance` | Counts of passing vs at-risk observations, labeling rate, at-risk ratio, imbalance ratio string, and outcome authorities. |
+| **Student Risk History** | `student_risk_analysis.records[].assessment_history` | Valid rule-based assessments ordered by academic year and semester, with attendance, normalized CIE, and risk-category comparisons when distinct unambiguous periods are available. |
 | **Target Leakage** | `target_leakage_warnings` | Flagged post-examination features (`see_marks`, `promotion_status`, `end_sem_marks`) with mitigation advice. |
 | **Readiness Assessment**| `readiness_assessment` | Explicit 7-point criteria checklist, status, blockers, warnings, and protocol recommendations. |
+
+Student risk history is derived only from the valid observations in the currently analyzed CSV upload. Academic year and semester provide ordering; they are not calendar assessment dates. Duplicate student-period observations are shown without a trend comparison, invalid observations are excluded, CIE trends require explicit maximum marks in both periods, and no history is persisted between uploads.
 
 ### 🚦 7-Point ML Experimental Readiness Criteria
 

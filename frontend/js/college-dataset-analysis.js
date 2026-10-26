@@ -115,6 +115,140 @@ function appendRiskRecommendations(row, recommendations) {
     cell.appendChild(list);
 }
 
+function isProgressNumber(value) {
+    return value != null && value !== "" && Number.isFinite(Number(value));
+}
+
+function formatProgressPercent(value) {
+    const number = Number(value);
+    return isProgressNumber(value)
+        ? `${number.toFixed(1)}%`
+        : "Not available";
+}
+
+function formatProgressCie(assessment) {
+    const obtained = Number(assessment.cie_marks_obtained);
+    const maximum = Number(assessment.cie_max_marks);
+    let marks = "Not available";
+    if (isProgressNumber(assessment.cie_marks_obtained)) {
+        marks = isProgressNumber(assessment.cie_max_marks)
+            ? `${obtained} / ${maximum}`
+            : `${obtained} marks (maximum not provided)`;
+    }
+    const percentage = formatProgressPercent(assessment.normalized_cie_pct);
+    return percentage === "Not available" ? marks : `${marks} (${percentage})`;
+}
+
+function renderStudentRiskProgress(records) {
+    const tableBody = document.getElementById("studentRiskProgressTableBody");
+    const emptyState = document.getElementById("studentRiskProgressEmpty");
+    const note = document.getElementById("studentRiskProgressNote");
+    tableBody.replaceChildren();
+
+    let observationCount = 0;
+    let singleObservationStudentCount = 0;
+    for (const record of records) {
+        const history = Array.isArray(record.assessment_history)
+            ? record.assessment_history
+            : [];
+        const assessments = history.length > 0
+            ? history
+            : [{
+                academic_year: record.academic_year,
+                semester: record.semester,
+                attendance_pct: record.attendance_pct,
+                cie_marks_obtained: record.cie_marks_obtained,
+                cie_max_marks: record.cie_max_marks,
+                risk_category: record.risk_category,
+                comparison: {
+                    available: false,
+                    reason: "Historical comparison details are unavailable for this assessment.",
+                },
+            }];
+        if (assessments.length === 1) singleObservationStudentCount += 1;
+        observationCount += assessments.length;
+
+        for (const assessment of assessments) {
+            const row = document.createElement("tr");
+            appendTextCell(row, record.student_ref);
+            const academicPeriod = assessment.academic_year != null && assessment.semester != null
+                ? `Year ${assessment.academic_year}, Semester ${assessment.semester}`
+                : "Academic period unavailable";
+            appendTextCell(row, academicPeriod);
+            appendTextCell(row, formatProgressPercent(assessment.attendance_pct));
+            const comparison = assessment.comparison;
+            const comparisonAvailable = comparison?.available
+                && comparison.compared_to
+                && comparison.attendance
+                && comparison.risk_category
+                && isProgressNumber(comparison.compared_to.academic_year)
+                && isProgressNumber(comparison.compared_to.semester)
+                && isProgressNumber(comparison.attendance.previous_pct)
+                && isProgressNumber(comparison.cie.previous_pct)
+                && ["Improving", "Declining", "Unchanged"].includes(comparison.attendance.direction)
+                && ["Improving", "Declining", "Unchanged"].includes(comparison.cie.direction)
+                && ["Improving", "Declining", "Unchanged"].includes(comparison.risk_category.direction)
+                && comparison.risk_category.previous
+                && comparison.risk_category.current;
+            if (comparisonAvailable) {
+                const previousPeriod =
+                    `Year ${comparison.compared_to.academic_year}, Semester ${comparison.compared_to.semester}`;
+                appendTextCell(
+                    row,
+                    `${comparison.attendance.direction} (from ${formatProgressPercent(comparison.attendance.previous_pct)} in ${previousPeriod})`
+                );
+                appendTextCell(row, formatProgressCie(assessment));
+                const cieChange = comparison.cie?.available
+                    && isProgressNumber(comparison.cie.previous_pct)
+                    && ["Improving", "Declining", "Unchanged"].includes(comparison.cie.direction)
+                    ? `${comparison.cie.direction} (from ${formatProgressPercent(comparison.cie.previous_pct)} in ${previousPeriod})`
+                    : comparison.cie?.reason || "Not available; explicit CIE maximum marks are required for both periods.";
+                appendTextCell(row, cieChange);
+                appendTextCell(row, assessment.risk_category || "Not available");
+                const riskChange = comparison.risk_category;
+                appendTextCell(
+                    row,
+                    `${riskChange.direction}: ${riskChange.previous} → ${riskChange.current}`
+                );
+                appendTextCell(
+                    row,
+                    `Compared with the most recent earlier unambiguous assessment (${previousPeriod}).`
+                );
+            } else {
+                appendTextCell(row, "Not compared");
+                appendTextCell(
+                    row,
+                    formatProgressCie(assessment)
+                );
+                appendTextCell(row, "Not available");
+                appendTextCell(row, assessment.risk_category || "Not available");
+                appendTextCell(row, "Not available");
+                const notes = assessment.duplicate_observations_count > 1
+                    ? comparison?.reason || "Duplicate observations make trend comparison unavailable."
+                    : "Current assessment; no earlier comparable observation is available.";
+                appendTextCell(row, notes);
+            }
+            tableBody.appendChild(row);
+        }
+    }
+
+    emptyState.hidden = observationCount > 0;
+    if (observationCount === 0) {
+        note.textContent = "No valid semester history is available for the selected students.";
+    } else if (singleObservationStudentCount > 0) {
+        note.textContent =
+            `${singleObservationStudentCount} selected student${singleObservationStudentCount === 1 ? " has" : "s have"} ` +
+            "only one distinct valid academic period. Current assessments are shown; add another distinct " +
+            "academic year/semester observation in the analyzed upload to support trend comparisons. " +
+            "History is session-only and is not stored between uploads.";
+    } else {
+        note.textContent =
+            "History is ordered by academic year and semester and derived only from valid observations in the " +
+            "currently analyzed upload. CIE trends require explicit maximum marks in both periods. " +
+            "Duplicate periods are shown without a trend comparison; history is session-only.";
+    }
+}
+
 function appendEmptyNote(container, message) {
     const note = document.createElement("span");
     note.className = "analysis-empty-note";
@@ -161,6 +295,11 @@ function resetStudentRiskAnalysis() {
         "CIE below 40%, or recorded active backlogs. Moderate Risk: attendance 75–85% or CIE 40–60%. " +
         "Dataset readiness is assessed separately below.";
     document.getElementById("studentRiskTableBody").replaceChildren();
+    document.getElementById("studentRiskProgressTableBody").replaceChildren();
+    document.getElementById("studentRiskProgressEmpty").hidden = true;
+    document.getElementById("studentRiskProgressNote").textContent =
+        "History is limited to valid academic-year and semester observations in the currently analyzed upload. " +
+        "A single observation shows the current assessment only; additional distinct periods are needed for trends.";
     document.getElementById("studentRiskNoRows").hidden = true;
     document.getElementById("exportStudentRiskCsv").disabled = true;
     document.getElementById("studentRiskExportStatus").textContent = "";
@@ -244,6 +383,7 @@ function applyStudentRiskFilters() {
     }
 
     document.getElementById("studentRiskNoRows").hidden = filteredRecords.length > 0;
+    renderStudentRiskProgress(filteredRecords);
     const exportButton = document.getElementById("exportStudentRiskCsv");
     exportButton.disabled = filteredRecords.length === 0;
     document.getElementById("studentRiskExportStatus").textContent =

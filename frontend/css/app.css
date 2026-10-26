@@ -423,6 +423,19 @@
             margin-bottom: 14px;
         }
 
+        .student-risk-progress {
+            margin-top: 24px;
+        }
+
+        .student-risk-progress h3 {
+            margin-bottom: 8px;
+        }
+
+        .student-risk-progress > p {
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
         .student-risk-table-wrapper {
             overflow-x: auto;
         }

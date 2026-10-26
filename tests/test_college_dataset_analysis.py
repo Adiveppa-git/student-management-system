@@ -241,6 +241,178 @@ def test_student_risk_screening_latest_observation_and_optional_columns():
     assert good["intervention_recommendations"] == []
 
 
+def test_student_risk_history_orders_periods_and_compares_screening_progress():
+    records = [
+        {
+            "student_ref": "ANON_HISTORY_01",
+            "branch": "CSE",
+            "academic_year": 2,
+            "semester": 3,
+            "attendance_pct": 92,
+            "cie_marks_obtained": 45,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_01",
+            "branch": "CSE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 60,
+            "cie_marks_obtained": 15,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_01",
+            "branch": "CSE",
+            "academic_year": 1,
+            "semester": 2,
+            "attendance_pct": 80,
+            "cie_marks_obtained": 25,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_01",
+            "branch": "CSE",
+            "academic_year": 2,
+            "semester": 4,
+            "attendance_pct": 91,
+            "cie_marks_obtained": 90,
+            "cie_max_marks": 100,
+        },
+    ]
+
+    result = analyze_student_risk_screening(records)
+    student = result["records"][0]
+    history = student["assessment_history"]
+
+    assert [(item["academic_year"], item["semester"]) for item in history] == [
+        (1, 1),
+        (1, 2),
+        (2, 3),
+        (2, 4),
+    ]
+    assert [item["risk_category"] for item in history] == [
+        "At Risk",
+        "Moderate Risk",
+        "Good",
+        "Good",
+    ]
+    assert history[0]["comparison"]["available"] is False
+    assert history[1]["comparison"]["attendance"]["direction"] == "Improving"
+    assert history[1]["comparison"]["cie"]["direction"] == "Improving"
+    assert history[1]["comparison"]["risk_category"] == {
+        "direction": "Improving",
+        "previous": "At Risk",
+        "current": "Moderate Risk",
+    }
+    assert history[2]["comparison"]["risk_category"]["direction"] == "Improving"
+    assert history[3]["comparison"]["attendance"]["direction"] == "Declining"
+    assert history[3]["comparison"]["cie"]["direction"] == "Unchanged"
+    assert history[3]["comparison"]["risk_category"]["direction"] == "Unchanged"
+    assert student["risk_category"] == "Good"
+    assert "session-only" in student["history_scope"].lower()
+
+
+def test_student_risk_history_single_valid_observation_and_missing_values():
+    records = [
+        {
+            "student_ref": "ANON_HISTORY_02",
+            "branch": "ECE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 80,
+            "cie_marks_obtained": 25,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_02",
+            "branch": "ECE",
+            "academic_year": 1,
+            "semester": 2,
+            "cie_marks_obtained": 30,
+            "cie_max_marks": 50,
+        },
+    ]
+
+    result = analyze_student_risk_screening(records)
+    history = result["records"][0]["assessment_history"]
+
+    assert len(history) == 1
+    assert history[0]["semester"] == 1
+    assert history[0]["comparison"]["available"] is False
+    assert "No earlier" in history[0]["comparison"]["reason"]
+
+
+def test_student_risk_history_does_not_compare_cie_without_explicit_maximum():
+    records = [
+        {
+            "student_ref": "ANON_HISTORY_04",
+            "branch": "ECE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 80,
+            "cie_marks_obtained": 30,
+        },
+        {
+            "student_ref": "ANON_HISTORY_04",
+            "branch": "ECE",
+            "academic_year": 1,
+            "semester": 2,
+            "attendance_pct": 90,
+            "cie_marks_obtained": 40,
+        },
+    ]
+
+    history = analyze_student_risk_screening(records)["records"][0]["assessment_history"]
+
+    assert history[0]["cie_max_marks"] is None
+    assert history[0]["normalized_cie_pct"] is None
+    assert history[1]["comparison"]["available"] is True
+    assert history[1]["comparison"]["attendance"]["direction"] == "Improving"
+    assert history[1]["comparison"]["cie"]["available"] is False
+    assert "Explicit CIE maximum marks" in history[1]["comparison"]["cie"]["reason"]
+
+
+def test_student_risk_history_duplicate_period_withholds_comparison():
+    records = [
+        {
+            "student_ref": "ANON_HISTORY_03",
+            "branch": "ISE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 65,
+            "cie_marks_obtained": 18,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_03",
+            "branch": "ISE",
+            "academic_year": 1,
+            "semester": 1,
+            "attendance_pct": 70,
+            "cie_marks_obtained": 20,
+            "cie_max_marks": 50,
+        },
+        {
+            "student_ref": "ANON_HISTORY_03",
+            "branch": "ISE",
+            "academic_year": 1,
+            "semester": 2,
+            "attendance_pct": 80,
+            "cie_marks_obtained": 25,
+            "cie_max_marks": 50,
+        },
+    ]
+
+    history = analyze_student_risk_screening(records)["records"][0]["assessment_history"]
+
+    assert len(history) == 2
+    assert history[0]["duplicate_observations_count"] == 2
+    assert history[0]["comparison"]["available"] is False
+    assert "2 valid observations" in history[0]["comparison"]["reason"]
+    assert history[1]["comparison"]["available"] is False
+
+
 def test_student_risk_screening_empty_dataset_has_zero_counts():
     result = analyze_student_risk_screening([])
     assert result["total_students"] == 0
