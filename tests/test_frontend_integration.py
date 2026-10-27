@@ -74,11 +74,11 @@ def test_frontend_static_route_serves_html():
     assert 'id="studentDetailsContent"' in details_response.text
 
     asset_paths = [
-        "/frontend/css/app.css",
+        "/frontend/css/app.css?v=2",
         "/frontend/js/api.js",
         "/frontend/js/navigation.js",
         "/frontend/js/student-registration.js",
-        "/frontend/js/students.js?v=3",
+        "/frontend/js/students.js?v=4",
         "/frontend/js/student-details.js",
         "/frontend/js/ai-dashboard.js",
         "/frontend/js/benchmark-prediction.js",
@@ -144,6 +144,8 @@ def test_students_list_shows_ten_and_loads_without_duplicates():
         "global.window = { addEventListener() {} };\n"
         + (FRONTEND_DIR / "js" / "students.js").read_text(encoding="utf-8")
     )
+    assert "const STUDENT_BATCH_SIZE = 10;" in student_script
+    assert 'src="js/students.js?v=4"' in STUDENTS_FILE.read_text(encoding="utf-8")
     runtime_test = r"""
 function makeNode() {
     return {
@@ -240,6 +242,47 @@ assertViewMore(false);
     assert result.returncode == 0, result.stderr
 
 
+def test_student_list_layout_keeps_actions_grouped():
+    """Verify student rows have room for details and keep action buttons grouped."""
+    styles = (FRONTEND_DIR / "css" / "app.css").read_text(encoding="utf-8")
+    students_content = STUDENTS_FILE.read_text(encoding="utf-8")
+    assert 'href="css/app.css?v=2"' in students_content
+    assert re.search(
+        r"\.main-wrapper\s*>\s*section\.container\[aria-labelledby=\"students-heading\"\]"
+        r"\s*\{[^}]*width:\s*min\(1100px,\s*95%\)",
+        styles,
+    )
+    assert re.search(
+        r"#studentList\s*>\s*li:not\(\.student-list-toggle\):not\(\.student-list-error\)"
+        r"\s*\{[^}]*flex-wrap:\s*nowrap",
+        styles,
+    )
+    assert re.search(
+        r"#studentList\s*>\s*li:not\(\.student-list-toggle\):not\(\.student-list-error\)"
+        r"\s*>\s*span\s*\{[^}]*flex:\s*1\s+1\s+auto;[^}]*min-width:\s*0;"
+        r"[^}]*overflow-wrap:\s*anywhere",
+        styles,
+    )
+    assert re.search(
+        r"#studentList\s*>\s*li:not\(\.student-list-toggle\):not\(\.student-list-error\)"
+        r"\s*>\s*div\s*\{[^}]*display:\s*flex;[^}]*flex:\s*0\s+0\s+auto;"
+        r"[^}]*flex-wrap:\s*nowrap",
+        styles,
+    )
+    assert re.search(
+        r"#studentList\s*>\s*li:not\(\.student-list-toggle\):not\(\.student-list-error\)"
+        r"\s*>\s*div\s*>\s*button\s*\{[^}]*flex-shrink:\s*0",
+        styles,
+    )
+    assert re.search(
+        r"@media\s*\(max-width:\s*768px\)\s*\{.*?"
+        r"#studentList\s*>\s*li:not\(\.student-list-toggle\):not\(\.student-list-error\)"
+        r"\s*\{[^}]*flex-wrap:\s*wrap",
+        styles,
+        re.DOTALL,
+    )
+
+
 def test_student_registration_and_update_use_inline_success_feedback():
     """Verify CRUD success feedback is inline and update keeps the form in place."""
     registration_content = FRONTEND_FILE.read_text(encoding="utf-8")
@@ -279,7 +322,7 @@ def test_student_details_page_navigation_and_safe_dom_rendering():
 
     assert 'href="index.html">🏠 Back to Dashboard</a>' in students_content
     assert 'id="studentDetailsPanel"' not in students_content
-    assert students_content.count('src="js/students.js?v=3"') == 1
+    assert students_content.count('src="js/students.js?v=4"') == 1
     assert students_content.count("students.js") == 1
     assert student_script.count("function viewStudent(") == 1
     assert student_script.count('createStudentAction("View", "viewBtn", () => viewStudent(student))') == 1

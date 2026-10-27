@@ -224,6 +224,34 @@
             flex-wrap: wrap;
         }
 
+        .main-wrapper > section.container[aria-labelledby="students-heading"] {
+            width: min(1100px, 95%);
+            max-width: none;
+        }
+
+        #studentList > li:not(.student-list-toggle):not(.student-list-error) {
+            flex-wrap: nowrap;
+        }
+
+        #studentList > li:not(.student-list-toggle):not(.student-list-error) > span {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        #studentList > li:not(.student-list-toggle):not(.student-list-error) > div {
+            display: flex;
+            flex: 0 0 auto;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #studentList > li:not(.student-list-toggle):not(.student-list-error) > div > button {
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
         /* Limitation Warning Banner */
         .disclaimer-banner {
             background: #fff3cd;
@@ -927,6 +955,15 @@
             }
             .form-grid-4.demographics-grid {
                 grid-template-columns: 1fr;
+            }
+            #studentList > li:not(.student-list-toggle):not(.student-list-error) {
+                flex-wrap: wrap;
+            }
+            #studentList > li:not(.student-list-toggle):not(.student-list-error) > span {
+                flex-basis: 100%;
+            }
+            #studentList > li:not(.student-list-toggle):not(.student-list-error) > div {
+                margin-left: auto;
             }
         }
 
