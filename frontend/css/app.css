@@ -224,7 +224,7 @@
             flex-wrap: wrap;
         }
 
-        .main-wrapper > section.container[aria-labelledby="students-heading"] {
+        .student-page-container {
             width: min(1100px, 95%);
             max-width: none;
         }

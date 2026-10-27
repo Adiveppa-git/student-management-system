@@ -246,10 +246,14 @@ def test_student_list_layout_keeps_actions_grouped():
     """Verify student rows have room for details and keep action buttons grouped."""
     styles = (FRONTEND_DIR / "css" / "app.css").read_text(encoding="utf-8")
     students_content = STUDENTS_FILE.read_text(encoding="utf-8")
+    registration_content = FRONTEND_FILE.read_text(encoding="utf-8")
     assert 'href="css/app.css?v=2"' in students_content
+    assert 'href="css/app.css?v=2"' in registration_content
+    assert 'class="container student-page-container"' in registration_content
+    assert 'class="container student-page-container" aria-labelledby="students-heading"' in students_content
     assert re.search(
-        r"\.main-wrapper\s*>\s*section\.container\[aria-labelledby=\"students-heading\"\]"
-        r"\s*\{[^}]*width:\s*min\(1100px,\s*95%\)",
+        r"\.student-page-container\s*\{[^}]*width:\s*min\(1100px,\s*95%\)"
+        r"[^}]*max-width:\s*none",
         styles,
     )
     assert re.search(
