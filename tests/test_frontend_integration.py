@@ -134,6 +134,112 @@ def test_existing_student_crud_elements_preserved():
     assert 'id="tab-students"' not in registration_content
 
 
+def test_students_list_shows_ten_and_loads_without_duplicates():
+    """Verify the students list reveals ten-entry batches and handles all list sizes."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is required for student list behavior verification.")
+
+    student_script = (
+        "global.window = { addEventListener() {} };\n"
+        + (FRONTEND_DIR / "js" / "students.js").read_text(encoding="utf-8")
+    )
+    runtime_test = r"""
+function makeNode() {
+    return {
+        children: [],
+        listeners: {},
+        append(...nodes) { this.children.push(...nodes); },
+        appendChild(node) { this.children.push(node); },
+        replaceChildren(...nodes) { this.children = nodes; },
+        addEventListener(event, callback) { this.listeners[event] = callback; },
+        set textContent(value) {
+            this.text = value;
+            this.children = [];
+        },
+        get textContent() { return this.text || ""; }
+    };
+}
+
+const studentList = makeNode();
+global.document = {
+    createElement: makeNode,
+    getElementById(id) {
+        if (id !== "studentList") throw new Error(`Unexpected element: ${id}`);
+        return studentList;
+    }
+};
+global.window = { addEventListener() {} };
+global.API = "/students";
+let students = [];
+global.fetch = async () => ({ ok: true, json: async () => students });
+
+function displayedStudents() {
+    return studentList.children.filter(child => child.className !== "student-list-toggle");
+}
+
+function makeStudents(count) {
+    return Array.from({ length: count }, (_, index) => ({
+        name: `Student ${index + 1}`,
+        usn: `USN${index + 1}`,
+        branch: "CSE",
+        year: 1
+    }));
+}
+
+function assertViewMore(expected) {
+    const pagination = studentList.children.find(child => child.className === "student-list-toggle");
+    if (Boolean(pagination) !== expected) {
+        throw new Error(`View More visibility expected ${expected}, got ${Boolean(pagination)}`);
+    }
+    if (pagination && pagination.children[0].textContent !== "View More") {
+        throw new Error("Pagination button must be labeled View More");
+    }
+    return pagination;
+}
+
+students = makeStudents(6);
+await loadStudents(true);
+if (displayedStudents().length !== 6) {
+    throw new Error(`Lists below ten must show every student: ${JSON.stringify(studentList.children)}`);
+}
+assertViewMore(false);
+
+students = makeStudents(10);
+await loadStudents(true);
+if (displayedStudents().length !== 10) throw new Error("Exactly ten students must all be shown");
+assertViewMore(false);
+
+students = makeStudents(25);
+await loadStudents(true);
+if (displayedStudents().length !== 10) throw new Error("Initial display must contain ten students");
+let pagination = assertViewMore(true);
+await pagination.children[0].listeners.click();
+if (displayedStudents().length !== 20) throw new Error("First click must reveal the next ten students");
+if (new Set(displayedStudents().map(item => item.children[0].textContent)).size !== 20) {
+    throw new Error("Loading another batch must not duplicate students");
+}
+pagination = assertViewMore(true);
+await pagination.children[0].listeners.click();
+if (displayedStudents().length !== 25) throw new Error("Final batch must reveal all remaining students");
+assertViewMore(false);
+
+await loadStudents(true);
+if (displayedStudents().length !== 10) throw new Error("Refreshing must reset the initial visible batch");
+assertViewMore(true);
+
+students = [];
+await loadStudents(true);
+if (studentList.children.length !== 1 || studentList.children[0].textContent !==
+    "No students have been registered yet.") {
+    throw new Error("Empty lists must show the empty-state message");
+}
+assertViewMore(false);
+"""
+    result = run_node_script(node, student_script, runtime_test)
+    assert result.returncode == 0, result.stderr
+
+
 def test_student_registration_and_update_use_inline_success_feedback():
     """Verify CRUD success feedback is inline and update keeps the form in place."""
     registration_content = FRONTEND_FILE.read_text(encoding="utf-8")

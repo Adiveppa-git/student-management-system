@@ -1,4 +1,5 @@
-let showAllStudents = false;
+const STUDENT_BATCH_SIZE = 10;
+let visibleStudentCount = STUDENT_BATCH_SIZE;
 
 function createStudentAction(label, className, action) {
     const button = document.createElement("button");
@@ -23,14 +24,15 @@ async function deleteStudent(usn) {
             throw new Error(error.detail || "Deletion failed");
         }
         window.alert("Student deleted.");
-        await loadStudents();
+        await loadStudents(true);
     } catch (error) {
         window.alert(`Error deleting student: ${error.message}`);
     }
 }
 
-async function loadStudents() {
+async function loadStudents(resetVisibleCount = false) {
     const studentList = document.getElementById("studentList");
+    if (resetVisibleCount) visibleStudentCount = STUDENT_BATCH_SIZE;
     studentList.replaceChildren();
 
     try {
@@ -45,7 +47,7 @@ async function loadStudents() {
             return;
         }
 
-        const visibleStudents = showAllStudents ? students : students.slice(0, 3);
+        const visibleStudents = students.slice(0, visibleStudentCount);
         visibleStudents.forEach((student, index) => {
             const item = document.createElement("li");
             const summary = document.createElement("span");
@@ -63,16 +65,16 @@ async function loadStudents() {
             studentList.appendChild(item);
         });
 
-        if (students.length > 3) {
+        if (visibleStudentCount < students.length) {
             const pagination = document.createElement("li");
             pagination.className = "student-list-toggle";
             const toggle = document.createElement("button");
             toggle.type = "button";
             toggle.className = "viewBtn";
-            toggle.textContent = showAllStudents ? "Show Less" : "View More";
-            toggle.addEventListener("click", () => {
-                showAllStudents = !showAllStudents;
-                loadStudents();
+            toggle.textContent = "View More";
+            toggle.addEventListener("click", async () => {
+                visibleStudentCount += STUDENT_BATCH_SIZE;
+                await loadStudents();
             });
             pagination.appendChild(toggle);
             studentList.appendChild(pagination);
