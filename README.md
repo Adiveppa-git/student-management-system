@@ -24,7 +24,6 @@ A full-stack FastAPI and MongoDB application for managing student records and pr
 - [Synthetic Data Disclaimer](#synthetic-data-disclaimer)
 - [Privacy and Data Handling](#privacy-and-data-handling)
 - [Known Limitations](#known-limitations)
-- [Screenshots](#screenshots)
 - [Author and Repository](#author-and-repository)
 
 ## Overview
@@ -136,7 +135,6 @@ Browser UI
 │   ├── css/app.css                  # Shared styles
 │   └── js/                          # Browser API and UI logic
 ├── tests/                           # Student CRUD, AI, college analysis, frontend, and security tests
-├── screenshots/                     # Existing application screenshots
 ├── .env.example                     # Sanitized environment-variable template
 ├── requirements.txt                 # Python dependency ranges
 └── README.md
@@ -420,17 +418,6 @@ The repository configures CORS through environment variables and preserves Mongo
 - The frontend static API base defaults to port 8000 rather than discovering a deployment automatically.
 - The benchmark pipeline status depends on artifact files in `app/ml/artifacts/`.
 - `index.backup.html` is a legacy backup and is not the primary mounted navigation target.
-
-## Screenshots
-
-The repository includes these existing screenshots:
-
-| Screenshot | Path |
-|---|---|
-| Student registration page | [`screenshots/home.png`](screenshots/home.png) |
-| Student edit flow | [`screenshots/edit.png`](screenshots/edit.png) |
-| Student details view | [`screenshots/view.png`](screenshots/view.png) |
-| Expanded student list | [`screenshots/more.png`](screenshots/more.png) |
 
 ## Author and Repository
 
