@@ -318,6 +318,30 @@ The frontend separates student registration and student records into two pages. 
 * **Missing Values**: Review completeness percentages per column.
 * **Data Quality Disclaimer**: Prominently notes that the report is a data-quality audit, not an individual student prediction.
 
+#### Readiness Assessment
+
+The College Dataset Analysis module evaluates uploaded data against these configured criteria:
+
+* At least 100 valid observations.
+* At least 80 binary-labeled observations.
+* At least 15 at-risk observations.
+* At least 15 observations in the minority class.
+* A validation error rate no greater than 5%.
+* No duplicate student-year-semester keys.
+* No detected target-leakage columns.
+* A basic engineering-academic population representation check.
+
+The system reports `READY_FOR_REVIEW` when all configured readiness blockers are resolved. Otherwise, it reports `TRAINING_BLOCKED`.
+
+`READY_FOR_REVIEW` indicates suitability for prospective offline human review under the application's configured checks. It does **not** establish real-world model accuracy, algorithmic fairness, institutional representativeness, or production deployment readiness. Passing readiness checks does not train or validate a predictive model.
+
+#### College Dataset Known Limitations
+
+* **Population representation:** The current check requires at least one valid branch and valid academic-year and semester ranges. It does not establish adequate coverage across all branches, years, demographic groups, or student populations.
+* **Label provenance:** Binary risk labels are syntactically validated, but an institutional source is not independently authenticated by the application. Labels should be treated as verified only after their provenance has been independently established.
+* **Synthetic data:** Synthetic records are suitable for testing upload, validation, class balance, and readiness behavior. They are not evidence of real-world student outcomes or model performance.
+* **Readiness versus prediction:** Dataset readiness does not imply that an individual prediction is accurate, calibrated, fair, or appropriate for a high-stakes academic decision.
+
 
 ---
 
@@ -644,7 +668,7 @@ Phase 9 implements comprehensive security hardening, data integrity verification
 3. **Dual-Schema Separation**: College-specific indicators (`attendance_pct`, `cie_marks_obtained`, `cumulative_cgpa`, `active_backlogs`) remain strictly separated from the UCI benchmark feature schema. Real college risk predictions require local semester data collection and institutional sign-off.
 4. **Non-Invasive Architecture**: Benchmark predictions are strictly on-demand in the UI and are **never** automatically saved or attached to existing student records in MongoDB.
 5. **Zero Persistence on Audit / Analysis**: Uploading CSV datasets through `POST /api/ai/college/audit-dataset` or `POST /api/ai/college/analyze-dataset` executes entirely in memory. Zero records are written to MongoDB. The 6 original MongoDB student records remain completely untouched.
-6. **No Production Readiness Claims**: A status of `READY_FOR_REVIEW` indicates structural and statistical readiness for offline experimental evaluation; it does not constitute approval for production deployment. Institutional sign-off, ethical review, and leak-free validation protocol design are required.
+6. **No Production Readiness Claims**: A status of `READY_FOR_REVIEW` indicates structural and statistical readiness for offline experimental evaluation; it does not prove model accuracy, institutional representativeness, algorithmic fairness, or production deployment readiness. Institutional sign-off, ethical review, independent label-provenance verification, and leak-free validation protocol design are required.
 
 ---
 
@@ -682,6 +706,12 @@ All automated tests can be executed with:
 ```bash
 pytest -v
 ```
+
+The focused college dataset analysis and integration suites can be run with:
+```bash
+python -m pytest tests/test_college_dataset_analysis.py tests/test_college_data_prep.py tests/test_college_dataset_import.py tests/test_ai_routes.py tests/test_frontend_integration.py -q
+```
+Check the current terminal output for the actual test count and warnings in your environment.
 
 **Actual Test Output**:
 ```text
