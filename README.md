@@ -65,7 +65,7 @@ The system does not train a college-specific model from uploaded CSV files. The 
 - Detect suspicious target-leakage columns by feature-name patterns.
 - Analyze binary labels and verified outcome distributions.
 - Produce a seven-check readiness assessment.
-- Build preliminary rule-based student risk categories, screening factors, and intervention suggestions.
+- Build initial rule-based student risk categories, screening factors, and intervention suggestions.
 - Compare attendance, normalized CIE, and risk category across distinct semesters where the upload contains enough history.
 - Filter results by risk category, branch, semester, or pseudonymous student reference.
 - Export the currently filtered student-risk records to `student-risk-report.csv`.
